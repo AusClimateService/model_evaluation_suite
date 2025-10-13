@@ -1,0 +1,23 @@
+source ./suite.conf
+
+source $@
+
+mkdir -p $outdir
+mkdir -p $logdir
+
+if [[ "$run_MSE" == "True" ]];
+  then
+  sh app/MSE/job_launch.sh
+fi
+
+
+if [[ "$run_syclops" == "True" ]];
+  then
+  sh app/SyCLoPS/job_launch.sh
+fi
+
+
+if [[ "$run_icclim" == "True" ]];
+  then
+  sh app/icclim_1hr/job_launch.sh
+fi
