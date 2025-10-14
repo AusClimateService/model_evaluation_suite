@@ -3,6 +3,7 @@ Combined repository for automated, aggregated evaluation of ACS regional climate
 
 # To do 
 * Add app to calculate seasonal means, quantiles, threshold exceedances
+* Add radar comparison
 * Add additional evaluation tools (as per planner)
 * Add Jupyter notebooks (consider papermill)
 * Extend to reference datasets
