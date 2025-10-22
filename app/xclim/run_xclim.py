@@ -1,78 +1,109 @@
-"""Command line program for calculating climate indices using icclim."""
+"""Command line program for calculating climate indices using xclim."""
 
 import os
 import argparse
 import logging
-from dateutil import parser
-import git
 import numpy as np
 import xarray as xr
-import pandas as pd
-import icclim
-from icclim.ecad.registry import EcadIndexRegistry
+import xclim as xc
 import dask.diagnostics
 from dask.distributed import Client, LocalCluster, progress
-import cmdline_provenance as cmdprov
 import xesmf as xe
-
 import sys
 sys.path.append("/g/data/xv83/users/bxn599/ACS/model_evaluation_suite/common")
 
 import utils_fileio
 
-valid_indices = {
-    index.short_name: index.short_name for index in EcadIndexRegistry.values()
-}
 
-bivariate_indices = [
-    'DTR',
-    'ETR',
-    'vDTR',
-    'CD',
-    'CW',
-    'WD',
-    'WW'
+#limit program to indices we've used/tested
+valid_indices = [
+    'cooling_degree_days',
+    'frost_days',
+    'growing_degree_days',
+    'heat_wave_frequency',
+    'hot_spell_frequency',
+    'hot_spell_max_length',
+    'hot_spell_total_length',
+    'cold_spell_frequency',
+    'cold_spell_max_length',
+    'cold_spell_total_length',
+    'maximum_consecutive_dry_days',
+    'maximum_consecutive_wet_days',
+    'maximum_consecutive_tx_days',
+    'maximum_consecutive_frost_days',
+    'maximum_consecutive_frost_free_days',
+    'tn_days_below',
+    'tn_days_above',
+    'tx_days_below',
+    'tx_days_above',
+    'tg_days_below',
+    'tg_days_above',
+    'heat_wave_frequency',
+    'heat_wave_index',
+    'heat_wave_max_length',
+    'heat_wave_total_length',
+    'heating_degree_days',
+    'high_precip_low_temp',
+    'max_n_day_precipitation_amount',
 ]
-no_time_chunk_indices = [
-    'WSDI',
-    'TG90p',
-    'TN90p',
-    'TX90p',
-    'TG10p',
-    'TN10p',
-    'TX10p',
-    'CSDI',
-    'R95p',
-    'R95pTOT',
-    'R99p',
-    'R99pTOT',
-    'CD',
-    'CW',
-    'WD',
-    'WW',
-    'SPI3',
-    'SPI6',
-]
-    
 
-def chunk_data(ds, var, index_name):
-    """Chunk a dataset."""
 
-    if index_name in no_time_chunk_indices:
-        dims = ds[var].coords.dims
-        assert 'time' in dims
-        chunks = {'time': -1}
-        for dim in dims:
-            if not dim == 'time':
-                chunks[dim] = 'auto'
-        ds = ds.chunk(chunks)
+def get_xclim_params(args_dict):
+    """Get the parameters and variables required by an xclim indicator function.
 
-    logging.info(f'Array size: {ds[var].shape}')
-    logging.info(f'Chunk size: {ds[var].chunksizes}')
-    logging.info(f'Chunk freq: {pd.infer_freq(ds.time.to_index())}')
+    Parameters
+    ----------
+    args_dict : dict
+        Input arguments from the command line
 
-    return ds
+    Returns
+    -------
+    index_func : xclim function
+        Function for calculating the index
+    index_params : dict
+        Parameters to pass to index_func
+    index_vars : list
+        Variables required by index_func
+    """
+                
+    index_name = args_dict['index_name']
+    index_func = xc.core.indicator.registry[index_name.upper()].get_instance()
+    index_params = {}
+    index_vars = []
+    thresh_names = []
+    for name, param in index_func.parameters.items():
+        if name in ['ds', 'indexer']:
+            continue
+        elif 'thresh' in name:
+            thresh_names.append(name)
+        elif param['kind'] == xc.core.utils.InputKind.VARIABLE:
+            index_vars.append(name)
+        elif name in args_dict:
+            index_params[name] = args_dict[name]
+            mstr, *ustr = str(param['default']).split(" ", maxsplit=1)
+            if ustr:
+                unit = xc.core.units.units2pint(ustr[0])
+                index_params[name] = "{} {}".format(index_params[name], str(unit))     
+        else:
+            index_params[name] = param['default']
 
+    #Some indicators have a 'thresh' argument and others have thresh_{variable}
+    thresh_dict = {}
+    if 'thresh' in args_dict:
+        input_thresh = args_dict['thresh']
+        input_thresh = [t.replace('_', ' ') for t in input_thresh]
+        if len(input_thresh) == 1:
+            thresh_dict['thresh'] = input_thresh[0]
+        for position, var in enumerate(index_vars):
+            thresh_dict[f'thresh_{var}'] = input_thresh[position]
+    for thresh_name in thresh_names:
+        index_params[thresh_name] = thresh_dict[thresh_name]
+
+    if 'date_bounds' in args_dict: 
+        index_params['date_bounds'] = args_dict['date_bounds']
+
+    return index_func, index_params, index_vars
+                
 
 def main(args):
     """Run the program."""
@@ -93,15 +124,9 @@ def main(args):
     log_level = logging.INFO if args.verbose else logging.WARNING
     logging.basicConfig(level=log_level)
 
-    if args.base_period:
-        start_date = parser.parse(args.base_period[0])
-        end_date = parser.parse(args.base_period[1])
-        base_period = [start_date, end_date]
-    else:
-        base_period = None
+    index_func, index_params, index_vars = get_xclim_params(vars(args))
 
-    datasets = []
-    variables = []
+    ds_list = []
     ndatasets = len(args.variable)
     for dsnum in range(ndatasets):
         infiles = args.input_files[dsnum]
@@ -118,6 +143,9 @@ def main(args):
             hshift=args.hshift,
         )
 
+        print(ds)
+        print(ds['tasmax'].attrs)  # before regridding
+        units_dict = {var: ds[var].attrs.get('units', '') for var in ds.data_vars}
         if args.regrid:
             if type(args.regrid) is float:
                delta = args.regrid
@@ -148,54 +176,41 @@ def main(args):
             ds = ds.chunk(chunks={'time':ds.chunks['time'],'lat':ds.lat.shape,'lon':ds.lon.shape})     
             regridder = xe.Regridder(ds, ds_ref, regrid_method)
             ds = regridder(ds)
+            print(ds)
+            print(ds['tasmax'].attrs)  # after regridding
+            for var, unit in units_dict.items():
+                ds[var].attrs['units'] = unit
 
-        datasets.append(ds)
-        variables.append(cf_var)
+            print(ds)
+            print(ds['tasmax'].attrs)  # after regridding
 
-    outdir = os.path.dirname(args.output_file)
-    temp_files = []
-    nlons = len(ds['lon'])
-    lon_islices = np.array_split(np.arange(nlons), args.nslices)
-    for count, lon_islice in enumerate(lon_islices):
-        sliced_datasets = [chunk_data(ds.isel({'lon': lon_islice}), var, args.index_name) for ds, var in zip(datasets, variables)]
-        print(sliced_datasets)
-        index = icclim.index(
-            in_files=sliced_datasets,
-            index_name=args.index_name,
-            var_name=variables,
-            slice_mode=args.slice_mode,
-            base_period_time_range=base_period,
-            logs_verbosity='HIGH',
-            save_thresholds=args.save_thresh,
-        )
-        if args.local_cluster:
-            index = index.persist()
-            progress(index)
-        index[args.index_name] = index[args.index_name].transpose('time', 'lat', 'lon', missing_dims='warn')
-        if args.nslices > 1:
-            temp_file = f'{outdir}/icclim_temp_{count:0>2}.nc'
-            index.to_netcdf(temp_file)
-            temp_files.append(temp_file)
+        ds_list.append(ds)
+    ds = xr.merge(ds_list)
+    print(ds)
+    print(ds['tasmax'].attrs)  # after regridding
 
-    if args.nslices > 1:
-        index = xr.open_mfdataset(temp_files)
+    if 'tas' in index_vars and 'tas' not in ds:
+        ds['tas'] = (ds['tasmax'] + ds['tasmin']) / 2.0
+        ds['tas'].attrs = ds['tasmin'].attrs
+        ds['tas'].attrs['long_name'] = ds['tas'].attrs['long_name'].replace('Minimum', 'Mean')
+
+    logging.info("Running xclim indicator {} with parameters {}".format(args.index_name, index_params))
+
+    index = index_func(ds=ds, **index_params)
+    index = index.to_dataset()
+
+    if args.local_cluster:
+        index = index.persist()
+        progress(index)
 
     if args.append_history:
         infile_log = {infiles[0]: ds.attrs['history']}
     else:
         infile_log = None
-
     index = utils_fileio.fix_output_metadata(
-        index,
-        args.index_name,
-        ds.attrs,
-        infile_log,
-        'icclim',
-        drop_time_bounds=args.drop_time_bounds
+        index, args.index_name, ds.attrs, infile_log, 'xclim'
     )
     index.to_netcdf(args.output_file,encoding={args.index_name:{'zlib':True, 'complevel':1, 'shuffle':True, 'dtype': 'float32'}})
-    for temp_file in temp_files:
-        os.remove(temp_file)
 
 
 if __name__ == '__main__':
@@ -205,8 +220,8 @@ if __name__ == '__main__':
         formatter_class=argparse.RawDescriptionHelpFormatter
     )     
     arg_parser.add_argument(
-        "index_name", type=str, choices=list(valid_indices.keys()), help="index name"
-    )         
+        "index_name", type=str, choices=valid_indices, help="name of climate index"
+    )
     arg_parser.add_argument("output_file", type=str, help="output file name")
     arg_parser.add_argument(
         "--input_files",
@@ -222,18 +237,34 @@ if __name__ == '__main__':
         help="variable to process from input files",
     )
     arg_parser.add_argument(
-        "--sub_daily_agg",
+        "--thresh",
         type=str,
         action='append',
-        choices=('min', 'mean', 'max'),
-        default=None,
-        help="temporal aggregation to apply to sub-daily input files (used to convert hourly to daily)",
+        help='threshold'
+    )
+    arg_parser.add_argument(
+        "--date_bounds",
+        type=str,
+        nargs=2,
+        help='Bounds for the time of year of interest in MM-DD format',
+    )
+    arg_parser.add_argument(
+        "--window",
+        type=int,
+        default=argparse.SUPPRESS,
+        help='Minimum number of days with temperatures above thresholds (used for heat wave indices)',
+    )
+    arg_parser.add_argument(
+        "--freq",
+        type=str,
+        default='YS',
+        help='Sampling frequency for index calculation [default=YS]',
     )
     arg_parser.add_argument(
         "--hshift",
         action='store_true',
         default=False,
-        help='Shfit time axis values back one hour (required for ERA5 data)',
+        help='Shift time axis values back one hour (required for ERA5 data)',
     )
     arg_parser.add_argument(
         "--append_history",
@@ -268,18 +299,12 @@ if __name__ == '__main__':
         help='Longitude bounds: (west_bound, east_bound)',
     )
     arg_parser.add_argument(
-        "--base_period",
+        "--sub_daily_agg",
         type=str,
-        nargs=2,
+        action='append',
+        choices=('min', 'mean', 'max'),
         default=None,
-        help='Base period (for percentile calculations) in YYYY-MM-DD format',
-    )
-    arg_parser.add_argument(
-        "--slice_mode",
-        type=str,
-        choices=['year', 'month', 'DJF', 'MAM', 'JJA', 'SON', 'ONDJFM', 'AMJJAS'],
-        default='year',
-        help='Sampling frequency for index calculation [default=year]',
+        help="temporal aggregation to apply to sub-daily input files (used to convert hourly to daily)",
     )
     arg_parser.add_argument(
         "--verbose",
@@ -306,12 +331,6 @@ if __name__ == '__main__':
         help='Number of threads per worker for local dask cluster',
     )
     arg_parser.add_argument(
-        "--nslices",
-        type=int,
-        default=1,
-        help='Slice the dataset along the longitude axis for processing',
-    )
-    arg_parser.add_argument(
         "--memory_limit",
         type=str,
         default='auto',
@@ -324,38 +343,17 @@ if __name__ == '__main__':
         help='Directory where dask worker space files can be written. Required for local dask cluster.',
     )
     arg_parser.add_argument(
-        "--drop_time_bounds",
-        action='store_true',
-        default=False,
-        help='Drop the time bounds from output file',
-    )
-    arg_parser.add_argument(
-	"--save_thresh",
-	action='store_true',
-	default=False,
-	help='Save threshold values to output file',
-    )
-    arg_parser.add_argument(
         "--regrid",
         type=str,
         default='None',
         help="Instructions to regrid dataset before computing index. Supply a float in degrees (e.g. 1.5) or a path to a template file",
-    )
+    ) 
     args = arg_parser.parse_args()
+    print(args)
+    print(sys.argv)
 
     assert not os.path.isfile(args.output_file), \
         f'Output file {args.output_file} already exists. Delete before proceeding.'
-
-    if args.index_name in bivariate_indices:
-        assert len(args.variable) == 2, \
-            f'{args.index_name} requires two variables' 
-        assert len(args.input_files) == 2, \
-            f'{args.index_name} requires two sets of input file/s (one for each variable)'
-    else:
-        assert len(args.variable) == 1, \
-            f'{args.index_name} requires one variable' 
-        assert len(args.input_files) == 1, \
-            f'{args.index_name} requires one set of input file/s'
 
     try:
        args.regrid = float(args.regrid)

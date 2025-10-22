@@ -19,5 +19,17 @@ fi
 
 if [[ "$run_icclim" == "True" ]];
   then
+  sh app/icclim/job_launch.sh
+fi
+
+
+if [[ "$run_icclim_1hr" == "True" ]];
+  then
   sh app/icclim_1hr/job_launch.sh
+fi
+
+
+if [[ "$run_xclim" == "True" ]];
+  then
+  sh app/xclim/job_launch.sh
 fi
