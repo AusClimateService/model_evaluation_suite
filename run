@@ -33,3 +33,9 @@ if [[ "$run_xclim" == "True" ]];
   then
   sh app/xclim/job_launch.sh
 fi
+
+
+if [[ "$run_means" == "True" ]];
+  then
+  sh app/means/job_launch.sh
+fi
