@@ -16,6 +16,8 @@ if not var:
 
 data_path = os.environ['data_path']
 outdir = os.environ['outdir']
+env_vars = ["data_path", "outdir", "domain", "gcm", "scenario", "realisation", "institution", "rcm2"]
+data_path, outdir, domain, gcm, scenario, realisation, institution, rcm2 = [os.environ[v] for v in env_vars]
 base_dir = os.path.join(data_path, "mon", var)
 version_dirs = sorted(glob.glob(os.path.join(base_dir, "v*")))
 
@@ -89,7 +91,8 @@ for season in means_seas:
         season_mean = ds[var].sel(time=ds['time.month'].isin(months)).groupby('time.year').mean('time')
 
     # Save output
-    out_file = os.path.join(output_dir, f"{var}_{start_year}-{end_year}_{season}_mean.nc")
+    out_file = os.path.join(output_dir, f"{var}_{domain}_{gcm}_{scenario}_{realisation}_{institution}_{rcm2}_v1-r1_{season}_mean_{start_year}-{end_year}.nc")
+    print(out_file)
     season_mean.to_netcdf(out_file)
     print(f"    Saved to {out_file}")
 

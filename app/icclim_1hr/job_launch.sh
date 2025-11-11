@@ -1,6 +1,6 @@
 #!/bin/bash
 
-
+export ESMFMKFILE=/g/data/xv83/users/bxn599/miniconda3/envs/icclim7.0.0/lib/esmf.mk
 cd $suitedir/app/icclim_1hr
 all_index_list="${icclim_1hr_indices_prcp}"
 mkdir -p $logdir/icclim_1hr
