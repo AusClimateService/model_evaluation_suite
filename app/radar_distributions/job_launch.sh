@@ -1,5 +1,5 @@
 #!/bin/bash
-  
+
 mkdir -p ${outdir}/radar_distributions/
 mkdir -p ${logdir}/radar
 

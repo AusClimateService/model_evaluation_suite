@@ -24,7 +24,7 @@ def main():
     start_year=os.environ['start_year']
     end_year=os.environ['end_year']
     filename=os.environ['filename']
-    obsdata = bool(os.environ['obsdata'])
+    obsdata = os.environ['obsdata'] in ['True',1,'true']
     print('read input variables')
     if obsdata:
         outname = os.environ['radar_outname']
