@@ -117,7 +117,7 @@ def main(args):
             hshift=args.hshift,
         )
 
-        if args.regrid:
+        if args.regrid and str(args.regrid).lower() != "false":
             if type(args.regrid) is float:
                delta = args.regrid
                lon = np.arange(round(ds.lon.min().values/delta)*delta,ds.lon.max().values,delta)
@@ -361,7 +361,7 @@ if __name__ == '__main__':
     except ValueError:
        if os.path.isfile(args.regrid):
            print(f'Data will be regridded to {args.regrid}')
-       elif args.regrid.lower() == 'none':
+       elif args.regrid.lower() in ['none','false']:
            args.regrid=None
            print(f'Data will not be regridded')
        else:

@@ -143,10 +143,8 @@ def main(args):
             hshift=args.hshift,
         )
 
-        print(ds)
-        print(ds['tasmax'].attrs)  # before regridding
         units_dict = {var: ds[var].attrs.get('units', '') for var in ds.data_vars}
-        if args.regrid:
+        if args.regrid and str(args.regrid).lower() != "false":
             if type(args.regrid) is float:
                delta = args.regrid
                lon = np.arange(round(ds.lon.min().values/delta)*delta,ds.lon.max().values,delta)
@@ -176,18 +174,11 @@ def main(args):
             ds = ds.chunk(chunks={'time':ds.chunks['time'],'lat':ds.lat.shape,'lon':ds.lon.shape})     
             regridder = xe.Regridder(ds, ds_ref, regrid_method)
             ds = regridder(ds)
-            print(ds)
-            print(ds['tasmax'].attrs)  # after regridding
             for var, unit in units_dict.items():
                 ds[var].attrs['units'] = unit
 
-            print(ds)
-            print(ds['tasmax'].attrs)  # after regridding
-
         ds_list.append(ds)
     ds = xr.merge(ds_list)
-    print(ds)
-    print(ds['tasmax'].attrs)  # after regridding
 
     if 'tas' in index_vars and 'tas' not in ds:
         ds['tas'] = (ds['tasmax'] + ds['tasmin']) / 2.0
@@ -361,7 +352,7 @@ if __name__ == '__main__':
     except ValueError:
        if os.path.isfile(args.regrid):
            print(f'Data will be regridded to {args.regrid}')
-       elif args.regrid.lower() == 'none':
+       elif args.regrid.lower() in ['none','false']:
            args.regrid=None
            print(f'Data will not be regridded')
        else:

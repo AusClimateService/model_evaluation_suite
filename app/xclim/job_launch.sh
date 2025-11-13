@@ -1,6 +1,6 @@
 #!/bin/bash
 
-
+export ESMFMKFILE=/g/data/xv83/users/bxn599/miniconda3/envs/icclim7.0.0/lib/esmf.mk
 cd $suitedir/app/xclim
 all_index_list="${xclim_indices_tasmax} ${xclim_indices_tasmin} ${xclim_indices_prcp}"
 mkdir -p $logdir/xclim
