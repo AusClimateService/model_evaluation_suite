@@ -10,8 +10,7 @@ import dask.diagnostics
 from dask.distributed import Client, LocalCluster, progress
 import xesmf as xe
 import sys
-sys.path.append("/g/data/xv83/users/bxn599/ACS/model_evaluation_suite/common")
-
+sys.path.append(os.environ['suitedir']+'lib')
 import utils_fileio
 
 
