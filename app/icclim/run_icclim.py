@@ -1,5 +1,5 @@
 """Command line program for calculating extremes indices."""
-
+print("starting")
 import os
 import argparse
 import logging
@@ -7,13 +7,16 @@ from dateutil import parser
 import git
 import numpy as np
 import xarray as xr
+print(1)
 import icclim
-from icclim.ecad.ecad_indices import EcadIndexRegistry
+print(2)
+from icclim.ecad.registry import EcadIndexRegistry
+print(3)
 import dask.diagnostics
 from dask.distributed import Client, LocalCluster, progress
 import cmdline_provenance as cmdprov
 import xesmf as xe
-
+print("loaded modules")
 valid_indices = {
     index.short_name: index.short_name for index in EcadIndexRegistry.values()
 }
@@ -70,7 +73,6 @@ def profiling_stats(rprof):
     logging.info(f'Peak memory usage: {max_memory}MB')
     logging.info(f'Peak CPU usage: {max_cpus}%')
 
-
 def get_new_log():
     """Generate command log for output file."""
 
@@ -82,7 +84,6 @@ def get_new_log():
     new_log = cmdprov.new_log(code_url=repo_url)
 
     return new_log
-
 
 def subset_lat(ds, lat_bnds):
     """Select grid points that fall within latitude bounds.
@@ -265,7 +266,6 @@ def fix_output_metadata(index_ds, index_name_lower, drop_time_bounds=False):
     """Make edits to output metadata"""
     
     index_ds.attrs['history'] = get_new_log()
-    
     index_name_upper = valid_indices[index_name_lower]
     del index_ds[index_name_upper].attrs['history']
     del index_ds[index_name_upper].attrs['cell_methods']

@@ -8,8 +8,10 @@ workdir="$syclops_scratchpath/workdir_${domain}_${gcm}_${scenario}_${realisation
 mkdir -p $workdir
 cd $workdir
 
+filepath="${data_path/\{freq\}/fx}"
+filepath="${filepath/\{var\}/${var_name}}"
 
-ln -s $data_path/fx/orog/v*/orog*.nc orog.nc
+ln -s $filepath orog.nc
 ln -s $suitedir/app/SyCLoPS/* .
 # create output lists from all processors for DETECTNODES and VARIABLEPROCESSOR
 ls $syclops_scratchpath/workdir_*_${domain}_${gcm}_${scenario}_${realisation}_${institution}_${rcm2}/out.dat > output_DN.txt
