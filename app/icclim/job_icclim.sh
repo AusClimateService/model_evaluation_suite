@@ -28,9 +28,15 @@ for var_index in $index_list; do
 
 	for var_name in ${var_list}; do
 		echo "$var_name - $index"
-		input_files="${indir}/${var_name}/v*/*.nc"
-		first_file=`ls ${indir}/${var_name}/v*/*.nc | head -n 1`
-		last_file=`ls ${indir}/${var_name}/v*/*.nc | tail -n 1`
+                if [ "$obsdata" == "True" ]; then
+   		    input_files="${indir}/*.nc"
+		    first_file=`ls ${indir}/*.nc | head -n 1`
+		    last_file=`ls ${indir}/*.nc | tail -n 1`
+                else
+   		    input_files="${indir}/day/${var_name}/v*/*.nc"
+		    first_file=`ls ${indir}/day/${var_name}/v*/*.nc | head -n 1`
+		    last_file=`ls ${indir}/day/${var_name}/v*/*.nc | tail -n 1`
+                fi
 		first_file=`basename ${first_file/.nc/}`
 		last_file=`basename ${last_file/.nc/}`
 	

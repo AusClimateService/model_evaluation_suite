@@ -44,4 +44,10 @@ fi
 if [[ "$run_spectra" == "True" ]];
   then
   sh app/spectra/job_launch.sh
+  sh app/icclim_1hr/job_launch.sh
+fi
+
+if [[ "$run_radar_dist" == "True" ]];
+  then
+  sh app/radar_distributions/job_launch.sh
 fi
