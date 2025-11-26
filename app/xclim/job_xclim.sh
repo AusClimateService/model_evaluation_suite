@@ -3,7 +3,8 @@
 # Script definition
 xclim_path=$suitedir/app/xclim
 script="/g/data/xv83/users/bxn599/miniconda3/envs/icclim7.0.0/bin/python ${xclim_path}/run_xclim.py"
-indir=$data_path/day
+indir="${data_path/\{freq\}/day}"
+indir="${indir/\{var\}/${var_name}}"
 label="${domain}_${gcm}_${scenario}_${realisation}_${institution}_${rcm2}_v1-r1"
 TIME_PERIOD="${start_year}-01-01 ${end_year}-12-31"
 
@@ -22,7 +23,7 @@ for var_index in $index_list; do
 
 	for var_name in ${var_list}; do
 		echo "$var_name - $index - $threshold"
-		input_files="${indir}/${var_name}/v*/*.nc"
+		input_files="${indir}/*.nc"
 		first_file=`ls ${indir}/${var_name}/v*/*.nc | head -n 1`
 		last_file=`ls ${indir}/${var_name}/v*/*.nc | tail -n 1`
 		first_file=`basename ${first_file/.nc/}`

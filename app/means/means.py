@@ -66,7 +66,7 @@ if not var:
 
 env_vars = ["data_path", "outdir", "domain", "gcm", "scenario", "realisation", "institution", "rcm2"]
 data_path, outdir, domain, gcm, scenario, realisation, institution, rcm2 = [os.environ[v] for v in env_vars]
-base_dir = os.path.join(data_path, "mon", var)
+base_dir = data_path.format(freq="mon",var=var)
 version_dirs = sorted(glob.glob(os.path.join(base_dir, "v*")))
 
 if not version_dirs:
