@@ -15,16 +15,17 @@ for var_index in $index_list; do
 	var_list=`echo $var_index | cut -d':' -f1`
 	var_list=${var_list/&/ }
 	echo $var_list
-	outdir=$outdir/climdex_1hr/${index}
+	outdir=$outdir/icclim_1hr/${index}
         mkdir -p ${outdir} || true
 
-	cmd="${script} --regrid ${icclim_template} --slice_mode ${icclim_slice_mode} --verbose"
+        cmd="${script}"
+#	cmd="${script} --regrid ${icclim_template} --slice_mode ${icclim_slice_mode} --verbose"
 
-	if [ "${TIME_PERIOD}" != "" ]; then
-                start_date=`echo $TIME_PERIOD | cut -d' ' -f1`
-                end_date=`echo $TIME_PERIOD | cut -d' ' -f2`
-                cmd="${cmd} --start_date $start_date --end_date $end_date"
-        fi
+#	if [ "${TIME_PERIOD}" != "" ]; then
+#                start_date=`echo $TIME_PERIOD | cut -d' ' -f1`
+#                end_date=`echo $TIME_PERIOD | cut -d' ' -f2`
+#                cmd="${cmd} --start_date $start_date --end_date $end_date"
+#        fi
 
 	for var_name in ${var_list}; do
 		echo "$var_name - $index"
@@ -43,12 +44,18 @@ for var_index in $index_list; do
 			output_file=${outdir}/${index}_${label}_${icclim_slice_mode}_${tmp/ /-}.nc
 		fi
 
-		cmd="${cmd} --input_files ${input_files} --variable ${var_name} --drop_time_bounds "
+		cmd="${cmd} ${index} ${output_file} --regrid ${icclim_template} --slice_mode ${icclim_slice_mode} --verbose --input_files ${input_files} --variable ${var_name} --drop_time_bounds"
 	done
+
+        if [ "${TIME_PERIOD}" != "" ]; then
+                start_date=`echo $TIME_PERIOD | cut -d' ' -f1`
+                end_date=`echo $TIME_PERIOD | cut -d' ' -f2`
+                cmd="${cmd} --start_date $start_date --end_date $end_date"
+        fi
 
 	rm ${output_file}
 
-	cmd="${cmd} ${index} ${output_file}"
+#	cmd="${index} ${output_file} ${cmd}"
 	echo $cmd
 	$cmd
 
