@@ -1,0 +1,9 @@
+.ipynb_checkpoints
+__pycache__
+logs
+output
+.pytest_cache
+*.pyc
+__init__-checkpoint.py
+*.egg*
+

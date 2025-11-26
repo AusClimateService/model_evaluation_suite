@@ -4,8 +4,6 @@
 
 icclim_path=$suitedir/app/icclim_1hr
 script="${icclim_python}  ${icclim_path}/run_icclim.py"
-indir="${data_path/\{freq\}/day}"
-indir="${indir/\{var\}/${var_name}}"
 label="${domain}_${gcm}_${scenario}_${realisation}_${institution}_${rcm2}_v1-r1"
 TIME_PERIOD="${start_year}-01-01 ${end_year}-12-31"
 
@@ -28,6 +26,8 @@ for var_index in $index_list; do
 #        fi
 
 	for var_name in ${var_list}; do
+                indir="${data_path/\{freq\}/1hr}"
+                indir="${indir/\{var\}/${var_name}}"
 		echo "$var_name - $index"
 		input_files="${indir}/*.nc"
 		first_file=`ls ${indir}/*.nc | head -n 1`
