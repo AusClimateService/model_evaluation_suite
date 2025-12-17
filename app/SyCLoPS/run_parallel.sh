@@ -17,28 +17,30 @@ module load ${python_env}
 workdir="$syclops_scratchpath/workdir_${YEAR}${MONTH}_${domain}_${gcm}_${scenario}_${realisation}_${institution}_${rcm2}/"
 mkdir -p $workdir
 cd $workdir
-path="$data_path/6hr/"
 
 for var in $syclops_6hourly_vars;
   do
-    ln -s ${path}${var}/v*/*_${YEAR}${MONTH}* $var.nc
+    filepath="${data_path/\{freq\}/6hr}"
+    filepath="${path/\{var\}/${var_name}}"
+    ln -s ${filepath}/*_${YEAR}${MONTH}* $var.nc
   done
 
 varlist="sfcWind wsgsmax pr psl"
 
 
-path="$data_path/3hr/"
-
 for var in $syclops_3hourly_vars;
   do
-    ln -s ${path}${var}/v*/*_${YEAR}${MONTH}* $var.nc
+    filepath="${data_path/\{freq\}/3hr}"
+    filepath="${filepath/\{var\}/${var_name}}"
+    ln -s ${filepath}/*_${YEAR}${MONTH}* $var.nc
   done
 
 
-path="$data_path/1hr/"
 for var in $syclops_hourly_vars;
   do
-    ln -s ${path}${var}/v*/*_${YEAR}${MONTH}* $var.nc
+    filepath="${data_path/\{freq\}/1hr}"
+    filepath="${filepath/\{var\}/${var_name}}"
+    ln -s ${filepath}/*_${YEAR}${MONTH}* $var.nc
   done
 
 # create input and output file lists for DetectNodes

@@ -1,6 +1,7 @@
-source ./suite.conf
 
-source $@
+source ./opt/suite-$USER.conf  # first source user settings
+source ./suite.conf            # then source general settings
+source $@                      # finally source overrides
 
 mkdir -p $outdir
 mkdir -p $logdir

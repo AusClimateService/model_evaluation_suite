@@ -28,9 +28,7 @@ def main():
     print('read input variables')
     if obsdata:
         outname = os.environ['radar_outname']
-        path=data_path
-    else:
-        path=os.path.join(data_path,freq_in,var,"v*/")
+    path=data_path.format(var=var,freq=freq_in)
     # read in radar location information from mask file
     print('open mask')
     mask = xr.open_mfdataset(radar_path+f"masks/{station}.nc").rainrate

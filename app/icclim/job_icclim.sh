@@ -2,9 +2,7 @@
 
 # Script definition
 icclim_path=$suitedir/app/icclim
-###script="/g/data/xv83/dbi599/miniconda3/envs/icclim/bin/python  ${icclim_path}/run_icclim.py"
-script="/g/data/xv83/users/bxn599/miniconda3/envs/icclim7.0.0/bin/python ${icclim_path}/run_icclim.py"
-indir=$data_path/day
+script="${icclim_python} ${icclim_path}/run_icclim.py"
 label="${domain}_${gcm}_${scenario}_${realisation}_${institution}_${rcm2}_v1-r1"
 TIME_PERIOD="${start_year}-01-01 ${end_year}-12-31"
 
@@ -27,16 +25,13 @@ for var_index in $index_list; do
 #        fi
 
 	for var_name in ${var_list}; do
+                indir="${data_path/\{freq\}/day}"
+                indir="${indir/\{var\}/${var_name}}"
+
 		echo "$var_name - $index"
-                if [ "$obsdata" == "True" ]; then
-   		    input_files="${indir}/*.nc"
-		    first_file=`ls ${indir}/*.nc | head -n 1`
-		    last_file=`ls ${indir}/*.nc | tail -n 1`
-                else
-   		    input_files="${indir}/day/${var_name}/v*/*.nc"
-		    first_file=`ls ${indir}/day/${var_name}/v*/*.nc | head -n 1`
-		    last_file=`ls ${indir}/day/${var_name}/v*/*.nc | tail -n 1`
-                fi
+   		input_files="${indir}/*.nc"
+		first_file=`ls ${indir}/*.nc | head -n 1`
+		last_file=`ls ${indir}/*.nc | tail -n 1`
 		first_file=`basename ${first_file/.nc/}`
 		last_file=`basename ${last_file/.nc/}`
 	
