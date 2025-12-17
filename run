@@ -11,6 +11,10 @@ if [[ "$run_MSE" == "True" ]];
   sh app/MSE/job_launch.sh
 fi
 
+if [[ "$run_TEstorms" == "True" ]];
+  then
+  sh app/TE_storms/job_launch.sh
+fi
 
 if [[ "$run_syclops" == "True" ]];
   then

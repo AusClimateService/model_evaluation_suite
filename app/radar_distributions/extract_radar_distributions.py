@@ -113,7 +113,7 @@ def main():
     print("histogram computed")
     print(hist)
     if obsdata:
-        hist.to_netcdf(f"{outdir}/radar_distributions/{station}_{outname}",encoding = {"histogram_"+var:{'zlib':True}})
+        hist.to_netcdf(f"{outdir}/radar_distributions/Radar{station}_{outname}",encoding = {"histogram_"+var:{'zlib':True}})
     else:
         filename_out = filename.format(var=f"Radar{station}",freq=freq_out,year1=start_year,year2=end_year,month1="01",month2="12")
         hist.to_netcdf(f"{outdir}/radar_distributions/{filename_out}",encoding = {"histogram_"+var:{'zlib':True}})
