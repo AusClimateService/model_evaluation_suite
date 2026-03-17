@@ -67,7 +67,7 @@ def chunk_data(ds, var, index_name):
 
     logging.info(f'Array size: {ds[var].shape}')
     logging.info(f'Chunk size: {ds[var].chunksizes}')
-    logging.info(f'Chunk freq: {pd.infer_freq(ds.time.to_index())}')
+    #logging.info(f'Chunk freq: {pd.infer_freq(ds.time.to_index())}')
 
     return ds
 
@@ -336,7 +336,7 @@ if __name__ == '__main__':
     arg_parser.add_argument(
         "--regrid",
         type=str,
-        default='None',
+        default=False,
         help="Instructions to regrid dataset before computing index. Supply a float in degrees (e.g. 1.5) or a path to a template file",
     )
     args = arg_parser.parse_args()

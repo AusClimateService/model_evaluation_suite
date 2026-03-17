@@ -12,7 +12,7 @@ for var_index in $index_list; do
 	var_list=`echo $var_index | cut -d':' -f1`
 	var_list=${var_list/&/ }
 	echo $var_list
-	outdir=$outdir/icclim/${index}
+	outdir=$outdir/${icclim_outname}/${index}
         mkdir -p ${outdir} || true
 
         cmd="${script}"

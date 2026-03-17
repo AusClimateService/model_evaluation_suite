@@ -336,7 +336,7 @@ if __name__ == '__main__':
     arg_parser.add_argument(
         "--regrid",
         type=str,
-        default='None',
+        default=False,
         help="Instructions to regrid dataset before computing index. Supply a float in degrees (e.g. 1.5) or a path to a template file",
     )
     args = arg_parser.parse_args()

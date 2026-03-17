@@ -52,11 +52,13 @@ def zsper(k): #Calculates a lower-terrain ratio to adjust raw LPS size (area).
 #The blobpairing function below outputs a blob index and a node index in tuples
 def blobpairing(k):
     nodepair=[]
-    NodeTimeArr=np.array(NodeTimeidx.loc[BlobTime[k]])
-    if NodeTimeArr.size>0:
-        T=cKDTree(list(zip(X[NodeTimeArr],Y[NodeTimeArr],Z[NodeTimeArr])))
-        dft=dfin0.iloc[NodeTimeArr] #At the same timestep for blobs and nodes
-        for i2 in BlobTimeidx[k]: 
+    try: 
+        NodeTimeArr=np.array(NodeTimeidx.loc[BlobTime[k]])
+    except KeyError:
+        return nodepair
+    T=cKDTree(list(zip(X[NodeTimeArr],Y[NodeTimeArr],Z[NodeTimeArr])))
+    dft=dfin0.iloc[NodeTimeArr] #At the same timestep for blobs and nodes
+    for i2 in BlobTimeidx[k]: 
             #First, pair blobs with nodes that are within 5 degrees GCD of their centroids:
             idx=T.query_ball_point((Xb[i2],Yb[i2],Zb[i2]),r=5*(np.pi/180))
             if len(idx)>1:        
@@ -76,8 +78,6 @@ def blobpairing(k):
                 if len(nid)>0:
                     node=dfin0.MSLP.iloc[nid].idxmin()
                     nodepair.append((i2,node))
-    else:
-        pass
     return nodepair
 
 

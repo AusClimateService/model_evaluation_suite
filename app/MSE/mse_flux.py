@@ -48,8 +48,11 @@ def mse(year, mon, exppath,file_freq,outdir,freq):
     # load 3D data
     for var in ['ta','zg','ua','va','wa','hus']:
 #    for var in ['ta','zg','hus','ua','va','wa']:
-        varlist = [x for x in os.listdir(glob.glob(exppath.format(freq=freq,var=f'{var}*'))[0]) \
-                   if x[-1] in ['0','5']]
+        varlist = glob.glob(exppath.format(freq=freq,var=f'{var}*'))
+        varlist = [x.strip('/') for x in varlist]
+        varlist = [x.split('/')[-2] for x in varlist]
+        varlist = [x for x in varlist if x[-1] in ['0','5']]
+        varlist.sort()
         if var == 'hus':
             varlist = ['hus500','hus600','hus700','hus850','hus925','hus1000']
         print(varlist)
@@ -60,10 +63,14 @@ def mse(year, mon, exppath,file_freq,outdir,freq):
                 continue
             if not (var2[len(var):]).isdigit():
                 continue
-            if file_freq=='monthly':
-                data[var].append(xr.open_mfdataset(os.path.join(exppath.format(freq=freq,var=var2),f"*{year}*"),chunks={}).sel(time=f"{year}-{mon:02d}")[var2])
-            else:
-                data[var].append(xr.open_mfdataset(os.path.join(exppath.format(freq=freq,var=var2),f"*{year}{mon:02d}*"),chunks={})[var2])
+#            if file_freq=='monthly':
+#                data[var].append(xr.open_mfdataset(os.path.join(exppath.format(freq=freq,var=var2),f"*_{year}{mon:02d}*"),chunks={})[var2])
+#            else:
+            data[var].append(xr.open_mfdataset(os.path.join(exppath.format(freq=freq,var=var2),f"*_{year}*"),chunks={})[var2])
+            try:
+                data[var][-1] = data[var][-1].drop_vars('crs')
+            except:
+                pass
             data[var][-1]['pressure'] = int(var2[len(var):])
         data[var] = xr.concat(data[var],'pressure').sortby('pressure').rename(var).transpose('time','pressure','lat','lon')
         data[var]['pressure'] = data[var]['pressure']*100
@@ -73,8 +80,8 @@ def mse(year, mon, exppath,file_freq,outdir,freq):
     varlist = ['hfls','hfss','rlut','rsut','rsus','rlus','rlds','rsds','clivi','tas','huss','ps','uas','vas','rsdt']
     for var in varlist:
             print(var)
-            filepath = os.path.join(exppath.format(var=var,freq=freq),f"*{year}*")
-            data[var]=xr.open_mfdataset(filepath,chunks={}).sel(time=f"{year}-{mon:02d}")[var]
+            filepath = os.path.join(exppath.format(var=var,freq=freq),f"*_{year}*")
+            data[var]=xr.open_mfdataset(filepath,chunks={})[var]
             data[var] = data[var].chunk({'time':1,'lat':510,'lon':650})
     data['orog'] = xr.open_mfdataset(os.path.join(exppath.format(var='orog',freq='fx'),"*.nc"))['orog']
     # normalise coords
@@ -113,14 +120,16 @@ def mse(year, mon, exppath,file_freq,outdir,freq):
                            0*data['ps'],data['ps'],ascending=False)/g
     budget = xr.Dataset(budget)
 
-    budget.to_netcdf(f"{outdir}/mse/mse_{year}{mon:02d}.nc", encoding = {var:{'zlib':True} for var in budget})    
+    budget.to_netcdf(f"{outdir}/mse/mse_{year}.nc", encoding = {var:{'zlib':True} for var in budget})    
                                                                                                                                     
     
 if __name__ == "__main__":
-    year = int(os.environ['year'])
-    mon =  int(os.environ['mon'])
+    start_year = int(os.environ['start_year'])
+    end_year = int(os.environ['end_year'])
     data_path =  os.environ['data_path']
     freq = os.environ['mse_freq']
     file_freq=os.environ['file_frequency']
     outdir=os.environ['outdir']
-    mse(year,mon,data_path,file_freq,outdir,freq)
+    mon=1
+    for year in np.arange(start_year,end_year+1):
+        mse(year,mon,data_path,file_freq,outdir,freq)

@@ -58,15 +58,31 @@ except ValueError:
     else:
         assert 0,f'Regridder reference {args.regrid} '
 
-means_seas = os.environ.get("means_seas", "DJF MAM JJA SON year").split()
+means_seas = os.environ.get("means_seas", "DJF MAM JJA SON year month_clim").split()
 var = os.environ.get("var")
+
+if 'means_oper' in os.environ:
+    oper_name = os.environ['means_oper']
+    oper = getattr(np,oper_name)
+else:
+    oper = np.mean
+    oper_name ="mean"
+
+
+if 'means_freq' in os.environ:
+    freq = os.environ['means_freq']
+else:
+    freq ="mon"
+
 if not var:
     print("ERROR: environment variable 'var' not set")
     sys.exit(1)
 
+
+
 env_vars = ["data_path", "outdir", "domain", "gcm", "scenario", "realisation", "institution", "rcm2"]
 data_path, outdir, domain, gcm, scenario, realisation, institution, rcm2 = [os.environ[v] for v in env_vars]
-input_dir = data_path.format(freq="mon",var=var)
+input_dir = data_path.format(freq=freq,var=var)
 #version_dirs = sorted(glob.glob(os.path.join(base_dir, "v*")))
 
 #if not version_dirs:
@@ -88,7 +104,8 @@ season_months = {
     "MAM": [3, 4, 5],
     "JJA": [6, 7, 8],
     "SON": [9, 10, 11],
-    "year": list(range(1, 13))
+    "year": list(range(1, 13)),
+    "month_clim": list(range(1, 13))
 }
 
 # -----------------------------
@@ -112,8 +129,8 @@ for bnd_var in ["lat_bnds", "lon_bnds"]:
         ds = ds.drop_vars(bnd_var)
 
 # Ensure time is datetime64
-if not np.issubdtype(ds.time.dtype, np.datetime64):
-    ds['time'] = pd.to_datetime(ds['time'].values)
+#if not np.issubdtype(ds.time.dtype, np.datetime64):
+#    ds['time'] = pd.to_datetime(ds['time'].values)
 
 # Restrict dataset to start_date and end_date if defined
 if start_date or end_date:
@@ -156,20 +173,22 @@ if start_date or end_date:
 # -----------------------------
 for season in means_seas:
     months = season_months[season]
-    print(f"  Calculating seasonal mean for {season}")
+    print(f"  Calculating seasonal {oper_name} for {season}")
 
     if season == "DJF":
         # DJF crosses year boundary
         season_mean = ds[var].groupby('time.year').apply(
-            lambda x: x.sel(time=x['time.month'].isin(months)).mean('time')
+            lambda x: x.sel(time=x['time.month'].isin(months)).reduce(oper,'time')
         )
     elif season == "year":
-        season_mean = ds[var].groupby('time.year').mean('time')
+        season_mean = ds[var].groupby('time.year').reduce(oper,'time')
+    elif season == "month_clim":
+        season_mean = ds[var].groupby('time.month').reduce(oper,'time')
     else:
-        season_mean = ds[var].sel(time=ds['time.month'].isin(months)).groupby('time.year').mean('time')
+        season_mean = ds[var].sel(time=ds['time.month'].isin(months)).groupby('time.year').reduce(oper,'time')
 
     # Save output
-    out_file = os.path.join(output_dir, f"{var}_{domain}_{gcm}_{scenario}_{realisation}_{institution}_{rcm2}_v1-r1_{season}_mean_{start_date}-{end_date}.nc")
+    out_file = os.path.join(output_dir, f"{var}_{domain}_{gcm}_{scenario}_{realisation}_{institution}_{rcm2}_v1-r1_{season}_{oper_name}_{start_date}-{end_date}.nc")
     print(out_file)
     season_mean.to_netcdf(out_file)
     print(f"    Saved to {out_file}")
