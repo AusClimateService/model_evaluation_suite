@@ -61,16 +61,18 @@ def extract_wet_hours(data_path, month, year, outdir, calc_dp=False, threshold=0
         files[var].sort()
     print(f"opening {len(files['pr'])} files for pr")
     print(f"{files['pr']}")
-    pr = xr.open_mfdataset(files['pr']).pr.sel(lon=slice(x0,x1),lat=slice(y0,y1))
+    pr = xr.open_mfdataset(files['pr']).pr.sel(lon=slice(x0,x1),lat=slice(y0,y1)).load()
     print("Loaded precip")
     print(pr)
     if calc_dp:
         print(f"opening {len(files['tas'])} files for tas")
         print(f"{files['tas']}")
         tas = xr.open_mfdataset(files['tas']).tas.sel(lon=slice(x0,x1),lat=slice(y0,y1))
-        print(f"opening {len(files['tas'])} files for rh")
+        tas = tas.isel(time=slice(len(pr)-3,None,None)).load()
+        print(f"opening {len(files['hurs'])} files for rh")
         print(f"{files['hurs']}")
         rh = xr.open_mfdataset(files['hurs']).hurs.sel(lon=slice(x0,x1),lat=slice(y0,y1))
+        rh = rh.isel(time=slice(len(pr)-3,None,None)).load()
         print("Loaded tas and rh")
         tdps = dewpoint_from_relative_humidity(tas,rh/100)
         print("Computed dewpoint")
@@ -98,8 +100,8 @@ def extract_wet_hours(data_path, month, year, outdir, calc_dp=False, threshold=0
     # mask remaining values below precip threshold
     ds = ds.where(ds.pr>0.2)
     ds.to_netcdf(os.path.join(outdir,'wethours',f'wethours_{year}{month:02d}.nc'),
-                 encoding = {'pr':{'zlib':True},
-                             'tdps':{'zlib':True}})
+               encoding = {'pr':{'dtype':'int16','scale_factor':0.1,'add_offset':0,'zlib':True,'_FillValue':-99},   
+                         'tdps':{'dtype':'int16','scale_factor':0.1,'add_offset':0,'zlib':True,'_FillValue':-99}})
 
 if __name__=="__main__":
     year = int(os.environ['YEAR'])
