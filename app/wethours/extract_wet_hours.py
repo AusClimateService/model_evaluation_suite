@@ -7,9 +7,10 @@ import os
 from metpy.calc import dewpoint_from_relative_humidity
 
 
-def extract_wet_hours(data_path, month, year, outdir, calc_dp=False, threshold=0.2):
+def extract_wet_hours(data_path, month, year, outdir, calc_dp=False, threshold=0.2,bounds=[-180,360,-90,90]):
     """
-    Extracts pr and dewpoint from hours with rainfall exceeding a threshold. Applied 1-hour lag to dewpoint
+    Extracts pr and dewpoint from hours with rainfall exceeding a threshold.
+    Applies 1-hour lag to dewpoint
     Args:
         data_path: filepath with wilds for frequency, year, month and variable 
         month: month to process
@@ -17,9 +18,11 @@ def extract_wet_hours(data_path, month, year, outdir, calc_dp=False, threshold=0
         outdir: path to save outputs
         calc_dp: whether to calculate dewpoint from tas and rh or to load it directly
         threshold: threshold to retain rainfall values above
+        bounds: spatial extent for optional subsetting 
     Returns
         Saves data to global variable savepath/filename
     """
+    x0,x1,y0,y1=bounds
     # locate input files
     files = {}
     if calc_dp:
@@ -27,30 +30,54 @@ def extract_wet_hours(data_path, month, year, outdir, calc_dp=False, threshold=0
     else:
         varlist = ['pr','tdps']
     for var in varlist:
-        files[var] = glob.glob(data_path.format(freq='1hr', month1=f"{month:02d}", year1=year, var=var, month2=f"{month:02d}", year2=year))
+        files[var] = glob.glob(data_path.format(freq='1hr', 
+                                                month1=f"{month:02d}", 
+                                                year1=year, 
+                                                var=var, 
+                                                month2=f"{month:02d}", 
+                                                year2=year))
         if var != 'pr':
         # include dewpoint from final hour of previous month (if available)
             if month == 1:
-                 files_lastmonth =  glob.glob(data_path.format(freq='1hr', month1=12, year1=year-1, var=var, month2=12,year2=year-1))
+                 datapath_lastmonth = data_path.format(freq='1hr', 
+                                                       month1=12, 
+                                                       year1=year-1, 
+                                                       var=var, 
+                                                       month2=12,
+                                                       year2=year-1)
             else:
-                 files_lastmonth =  glob.glob(data_path.format(freq='1hr', month1=f"{month-1:02d}", year1=year, var=var,month2=f"{month-1:02d}",year2=year-1))
+                 datapath_lastmonth = data_path.format(freq='1hr', 
+                                                       month1=f"{month-1:02d}", 
+                                                       year1=year, 
+                                                       var=var,
+                                                       month2=f"{month-1:02d}",
+                                                       year2=year)
+            files_lastmonth =  glob.glob(datapath_lastmonth)
             files_lastmonth.sort()
             if len(files_lastmonth)>0:
                 files[var].append(files_lastmonth[-1])
             else:
                 print(f"No previous month found for {var} {year} {month} - is this the start of the dataset?")
         files[var].sort()
-    pr = xr.open_mfdataset(files['pr']).pr#.sel(lon=slice(120,125),lat=slice(-25,-20))
+    print(f"opening {len(files['pr'])} files for pr")
+    print(f"{files['pr']}")
+    pr = xr.open_mfdataset(files['pr']).pr.sel(lon=slice(x0,x1),lat=slice(y0,y1))
     print("Loaded precip")
     print(pr)
     if calc_dp:
-        tas = xr.open_mfdataset(files['tas']).tas#.sel(lon=slice(120,125),lat=slice(-25,-20))
-        rh = xr.open_mfdataset(files['hurs']).hurs#.sel(lon=slice(120,125),lat=slice(-25,-20))
+        print(f"opening {len(files['tas'])} files for tas")
+        print(f"{files['tas']}")
+        tas = xr.open_mfdataset(files['tas']).tas.sel(lon=slice(x0,x1),lat=slice(y0,y1))
+        print(f"opening {len(files['tas'])} files for rh")
+        print(f"{files['hurs']}")
+        rh = xr.open_mfdataset(files['hurs']).hurs.sel(lon=slice(x0,x1),lat=slice(y0,y1))
         print("Loaded tas and rh")
         tdps = dewpoint_from_relative_humidity(tas,rh/100)
         print("Computed dewpoint")
     else:
-        tdps = xr.open_mfdataset(files['tdps']).tdps#.sel(lon=slice(120,125),lat=slice(-25,-20))
+        print(f"opening {len(files['tdps'])} files for dewpoint")
+        print(f"{files['tdps']}")
+        tdps = xr.open_mfdataset(files['tdps']).tdps.sel(lon=slice(x0,x1),lat=slice(y0,y1))
         print("Loaded tdps")
 
     # shift dewpoint forward one hour
@@ -75,11 +102,15 @@ def extract_wet_hours(data_path, month, year, outdir, calc_dp=False, threshold=0
                              'tdps':{'zlib':True}})
 
 if __name__=="__main__":
-    year = int(os.environ['year'])
-    month = int(os.environ['month'])
+    year = int(os.environ['YEAR'])
+    month = int(os.environ['MONTH'])
     data_path =  os.environ['data_path']
     filename =  os.environ['filename']
+    lonmin = float(os.environ['wethours_lonmin'])
+    lonmax = float(os.environ['wethours_lonmax'])
+    latmin = float(os.environ['wethours_latmin'])
+    latmax = float(os.environ['wethours_latmax'])
     calc_dp = (os.environ['wethours_calcdp'] in ['TRUE','true','True',1])
     threshold = float(os.environ['wethours_threshold'])
     outdir=os.environ['outdir']
-    extract_wet_hours(data_path+filename, month, year, outdir, calc_dp, threshold) 
+    extract_wet_hours(data_path+filename, month, year, outdir, calc_dp, threshold, [lonmin,lonmax,latmin,latmax]) 
