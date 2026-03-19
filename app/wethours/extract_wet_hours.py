@@ -7,12 +7,13 @@ import os
 from metpy.calc import dewpoint_from_relative_humidity
 
 
-def extract_wet_hours(data_path, month, year, outdir, calc_dp=False, threshold=0.2,bounds=[-180,360,-90,90]):
+def extract_wet_hours(data_path,filename, month, year, outdir, calc_dp=False, threshold=0.2,landmask=False,bounds=[-180,360,-90,90]):
     """
     Extracts pr and dewpoint from hours with rainfall exceeding a threshold.
     Applies 1-hour lag to dewpoint
     Args:
         data_path: filepath with wilds for frequency, year, month and variable 
+        filename: file name with wilds for frequency, month, year anf variable
         month: month to process
         year: year to process
         outdir: path to save outputs
@@ -29,8 +30,11 @@ def extract_wet_hours(data_path, month, year, outdir, calc_dp=False, threshold=0
         varlist = ['pr','hurs','tas']
     else:
         varlist = ['pr','tdps']
+    if landmask:
+        maskfile = glob.glob((data_path+"/*.nc").format(freq='fx',var='sftlf'))
+        mask = xr.open_mfdataset(maskfile)['sftlf'].load()
     for var in varlist:
-        files[var] = glob.glob(data_path.format(freq='1hr', 
+        files[var] = glob.glob((data_path+filename).format(freq='1hr', 
                                                 month1=f"{month:02d}", 
                                                 year1=year, 
                                                 var=var, 
@@ -39,14 +43,14 @@ def extract_wet_hours(data_path, month, year, outdir, calc_dp=False, threshold=0
         if var != 'pr':
         # include dewpoint from final hour of previous month (if available)
             if month == 1:
-                 datapath_lastmonth = data_path.format(freq='1hr', 
+                 datapath_lastmonth = (data_path+filename).format(freq='1hr', 
                                                        month1=12, 
                                                        year1=year-1, 
                                                        var=var, 
                                                        month2=12,
                                                        year2=year-1)
             else:
-                 datapath_lastmonth = data_path.format(freq='1hr', 
+                 datapath_lastmonth = (data_path+filename).format(freq='1hr', 
                                                        month1=f"{month-1:02d}", 
                                                        year1=year, 
                                                        var=var,
@@ -61,18 +65,31 @@ def extract_wet_hours(data_path, month, year, outdir, calc_dp=False, threshold=0
         files[var].sort()
     print(f"opening {len(files['pr'])} files for pr")
     print(f"{files['pr']}")
-    pr = xr.open_mfdataset(files['pr']).pr.sel(lon=slice(x0,x1),lat=slice(y0,y1)).load()
+    pr = xr.open_mfdataset(files['pr']).pr.sel(lon=slice(x0,x1),lat=slice(y0,y1))
+    if landmask:
+       pr = pr.where(mask==100,drop=True).fillna(0)
+    pr.load()
     print("Loaded precip")
     print(pr)
     if calc_dp:
         print(f"opening {len(files['tas'])} files for tas")
         print(f"{files['tas']}")
         tas = xr.open_mfdataset(files['tas']).tas.sel(lon=slice(x0,x1),lat=slice(y0,y1))
-        tas = tas.isel(time=slice(len(pr)-3,None,None)).load()
+        if len(files_lastmonth)>0:
+            tas = tas.isel(time=slice(len(tas)-len(pr)-3,None,None)) # remove most (all but last 3 hours) of previous month
+        if landmask:
+            tas = tas.where(mask==100,drop=True)
+        print(tas.time[0])
+        tas = tas.load()
         print(f"opening {len(files['hurs'])} files for rh")
         print(f"{files['hurs']}")
         rh = xr.open_mfdataset(files['hurs']).hurs.sel(lon=slice(x0,x1),lat=slice(y0,y1))
-        rh = rh.isel(time=slice(len(pr)-3,None,None)).load()
+        if len(files_lastmonth)>0:
+            rh = rh.isel(time=slice(len(rh)-len(pr)-3,None,None)) # remove most (all but last 3 hours) of previous month
+        print(rh.time[0])
+        if landmask:
+            rh = rh.where(mask==100,drop=True)
+        rh = rh.load()
         print("Loaded tas and rh")
         tdps = dewpoint_from_relative_humidity(tas,rh/100)
         print("Computed dewpoint")
@@ -80,8 +97,12 @@ def extract_wet_hours(data_path, month, year, outdir, calc_dp=False, threshold=0
         print(f"opening {len(files['tdps'])} files for dewpoint")
         print(f"{files['tdps']}")
         tdps = xr.open_mfdataset(files['tdps']).tdps.sel(lon=slice(x0,x1),lat=slice(y0,y1))
+        if len(files_lastmonth)>0:
+            tdps = tdps.isel(time=slice(len(tdps)-len(pr)-3,None,None)) # remove most (all but last 3 hours) of previous month
+        if landmask:
+           tdps = tdps.where(mask==100,drop=True)
+        tdps = tdps.load()
         print("Loaded tdps")
-
     # shift dewpoint forward one hour
     tdps_shift = tdps.shift(time=1)[-1*len(pr.time):]
     # at each grid-point, sort by precip values. Scale precip into mm/hr
@@ -90,29 +111,41 @@ def extract_wet_hours(data_path, month, year, outdir, calc_dp=False, threshold=0
     tdps_sorted = np.take_along_axis(tdps_shift.values, array_index, axis=0)
     # compute number of datapoints with values above precip threshold 
     n = (pr_sorted.max(axis=(1, 2))>=threshold).sum()
+    print(f"max of {n} pr values above threshold")
     # truncate most values below threshold
     pr_trunc = pr_sorted[-n:]
     tdps_trunc = tdps_sorted[-n:]
     # convert to xarray format. Remove time coordinate as times have been scrambled
     pr_trunc_xr = pr[-n:].copy(data=pr_trunc).drop_vars('time').rename({'time':'index'})
-    tdps_trunc_xr = tdps[-n:].copy(data=tdps_trunc).drop_vars('time').rename({'time':'index'})
+    tdps_trunc_xr = tdps_shift[-n:].copy(data=tdps_trunc).drop_vars('time').rename({'time':'index'})
     ds = xr.Dataset({'pr':pr_trunc_xr, 'tdps':tdps_trunc_xr})
     # mask remaining values below precip threshold
     ds = ds.where(ds.pr>0.2)
-    ds.to_netcdf(os.path.join(outdir,'wethours',f'wethours_{year}{month:02d}.nc'),
-               encoding = {'pr':{'dtype':'int16','scale_factor':0.1,'add_offset':0,'zlib':True,'_FillValue':-99},   
-                         'tdps':{'dtype':'int16','scale_factor':0.1,'add_offset':0,'zlib':True,'_FillValue':-99}})
+    outname = filename.format(var='wethours',
+                              freq='1hr', 
+                              year1=year,
+                              year2=year,
+                              month1=f"{month:02d}",
+                              month2=f"{month:02d}")
+    ds.to_netcdf(os.path.join(outdir,'wethours',outname),
+               encoding = {'pr':{'dtype':'int16','scale_factor':0.1,'add_offset':0,'zlib':True,'_FillValue':-990},   
+                         'tdps':{'dtype':'int16','scale_factor':0.1,'add_offset':0,'zlib':True,'_FillValue':-990}})
 
 if __name__=="__main__":
     year = int(os.environ['YEAR'])
     month = int(os.environ['MONTH'])
     data_path =  os.environ['data_path']
     filename =  os.environ['filename']
-    lonmin = float(os.environ['wethours_lonmin'])
-    lonmax = float(os.environ['wethours_lonmax'])
-    latmin = float(os.environ['wethours_latmin'])
-    latmax = float(os.environ['wethours_latmax'])
+    try:
+        lonmin = float(os.environ['wethours_lonmin'])
+        lonmax = float(os.environ['wethours_lonmax'])
+        latmin = float(os.environ['wethours_latmin'])
+        latmax = float(os.environ['wethours_latmax'])
+        bounds = [lonmin,lonmax,latmin,latmax]
+    except KeyError:
+        bounds = [-180,360,-90,90]
     calc_dp = (os.environ['wethours_calcdp'] in ['TRUE','true','True',1])
+    apply_mask = (os.environ['wethours_landmask'] in ['TRUE','true','True',1])
     threshold = float(os.environ['wethours_threshold'])
     outdir=os.environ['outdir']
-    extract_wet_hours(data_path+filename, month, year, outdir, calc_dp, threshold, [lonmin,lonmax,latmin,latmax]) 
+    extract_wet_hours(data_path,filename, month, year, outdir, calc_dp, threshold, apply_mask, bounds) 
