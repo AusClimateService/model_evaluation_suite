@@ -9,7 +9,7 @@ Combined repository for automated, aggregated evaluation of ACS regional climate
 | ASWT | Australian Synoptic Weather Types | Complete | ERA5 (precomputed by authors) | Only relevant for Australian domain | [Paper](https://doi.org/10.1029/2025JD043873), [Github](https://github.com/21centuryweather/Australian-synoptic-weather-types) 
 | MSE | Moist static energy | 90% | ERA5 (gadi dependent) | Fairly inconclusive | |
 | SyCLoPS | Tempest Extremes low pressure classifier | Complete | ERA5 (precomputed by authors), IBTrACS | Needs up-to-date (2026) installation of [Tempest Extremes](https://github.com/ClimateGlobalChange/tempestextremes) | [paper](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2024JD041287) [doc](https://climate.ucdavis.edu/syclops.php) |
-| TE_storms | Tempest Extremes updraft helicity tracker | 90% | BARRA, ACCESS-CE | | slow on a large domain. Needs [Tempest Extremes](https://github.com/ClimateGlobalChange/tempestextremes) | N/A |
+| TE_storms | Tempest Extremes updraft helicity tracker | 90% | BARRA, ACCESS-CE |  slow on a large domain. Needs [Tempest Extremes](https://github.com/ClimateGlobalChange/tempestextremes) | N/A |
 | icclim | Rainfall and temperature climate indices | Complete |  Gridded rainfall and temperature products | Needs icclim python library installed in conda environment | [icclim](https://icclim.readthedocs.io/en/stable/) | 
 | icclim_1hr | Attempt to apply icclim indices to hourly data | Some bugs | BARRA-C2. Ideally BRAIN | units are mm/day rather than mm/hr | [icclim](https://icclim.readthedocs.io/en/stable/) |
 | means | Compute seasonal, annual and climatological monthly means | Complete (model only) | BARRA, ERA5 (not implemented yet) | Used for sensitivity analysis, not obs comparison | N/A |
