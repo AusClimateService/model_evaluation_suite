@@ -92,7 +92,7 @@ input_dir = data_path.format(freq=freq,var=var)
 #    raise ValueError(f"Multiple version subdirectories found in {base_dir}: {version_dirs}")
 
 #input_dir = version_dirs[0]
-output_dir = os.path.join(outdir,"means",var)
+output_dir = os.path.join(outdir,oper_name,var)
 os.makedirs(output_dir, exist_ok=True)
 
 start_date = os.environ.get("start_year")
@@ -100,12 +100,8 @@ end_date = os.environ.get("end_year")
 
 # Map seasons to months
 season_months = {
-    "DJF": [12, 1, 2],
-    "MAM": [3, 4, 5],
-    "JJA": [6, 7, 8],
-    "SON": [9, 10, 11],
-    "year": list(range(1, 13)),
-    "month_clim": list(range(1, 13))
+    "JJAS": [6, 7, 8, 9],
+    "OND": [10, 11, 12],
 }
 
 # -----------------------------
@@ -120,7 +116,7 @@ if not files:
     sys.exit(0)
 
 print(f"Processing variable: {var}")
-ds = xr.open_mfdataset(files, combine="by_coords")
+ds = xr.open_mfdataset(files, combine="by_coords", data_vars="minimal")
 
 # Drop lat_bnds / lon_bnds if they exist
 for bnd_var in ["lat_bnds", "lon_bnds"]:
@@ -137,58 +133,90 @@ if start_date or end_date:
     ds = subset_time(ds, start_date=start_date, end_date=end_date)
 
 # Regrid if true
-    if args.regrid and str(args.regrid).lower() != "false":
-        if type(args.regrid) is float:
-            delta = args.regrid
-            lon = np.arange(round(ds.lon.min().values/delta)*delta,ds.lon.max().values,delta)
-            lat = np.arange(round(ds.lat.min().values/delta)*delta+delta/2,ds.lat.max().values,delta)
-            ds_ref = xr.DataArray(
-                name='reference',
-                data = np.ones((len(lat),len(lon))),
-                dims=["lat", "lon"],
-                coords=dict(
-                    lat=("lat", lat),
-                    lon=("lon", lon),
-                )).to_dataset()
-        else:
-            ds_ref = xr.open_dataset(args.regrid)
-            ds_ref = ds_ref.sel(
-                lat=slice(ds.lat.min().values,ds.lat.max().values),
-                lon=slice(ds.lon.min().values,ds.lon.max().values)
-                    )
-        ref_res = np.mean([np.abs(np.gradient(ds_ref.lon.values)).mean(),np.abs(np.gradient(ds_ref.lat.values)).mean()])
-        df_res = np.mean([np.abs(np.gradient(ds.lon.values)).mean(),np.abs(np.gradient(ds.lat.values)).mean()])
-        if ref_res < df_res:
-            regrid_method = 'bilinear'
-            print('Warning: downscaling data to finer resoulution using bilinear regridding')
-        else:
-            regrid_method = 'conservative'
-        ds = ds.unify_chunks()
-        ds = ds.chunk(chunks={'time':ds.chunks['time'],'lat':ds.lat.shape,'lon':ds.lon.shape})     
-        regridder = xe.Regridder(ds, ds_ref, regrid_method)
-        ds = regridder(ds)
+if args.regrid and str(args.regrid).lower() != "false":
+    if type(args.regrid) is float:
+        delta = args.regrid
+        lon = np.arange(round(ds.lon.min().values/delta)*delta,ds.lon.max().values,delta)
+        lat = np.arange(round(ds.lat.min().values/delta)*delta+delta/2,ds.lat.max().values,delta)
+        ds_ref = xr.DataArray(
+            name='reference',
+            data = np.ones((len(lat),len(lon))),
+            dims=["lat", "lon"],
+            coords=dict(
+                lat=("lat", lat),
+                lon=("lon", lon),
+            )).to_dataset()
+    else:
+        ds_ref = xr.open_dataset(args.regrid)
+        ds_ref = ds_ref.sel(
+            lat=slice(ds.lat.min().values,ds.lat.max().values),
+            lon=slice(ds.lon.min().values,ds.lon.max().values)
+                )
+    ref_res = np.mean([np.abs(np.gradient(ds_ref.lon.values)).mean(),np.abs(np.gradient(ds_ref.lat.values)).mean()])
+    df_res = np.mean([np.abs(np.gradient(ds.lon.values)).mean(),np.abs(np.gradient(ds.lat.values)).mean()])
+    if ref_res < df_res:
+        regrid_method = 'bilinear'
+        print('Warning: downscaling data to finer resoulution using bilinear regridding')
+    else:
+        regrid_method = 'conservative'
+    ds = ds.unify_chunks()
+    ds = ds.chunk(chunks={'time':ds.chunks['time'],'lat':ds.lat.shape,'lon':ds.lon.shape})     
+    regridder = xe.Regridder(ds, ds_ref, regrid_method)
+    ds = regridder(ds)
 
 # -----------------------------
 # Loop over seasons and calculate mean
 # -----------------------------
+weights = ds.time.dt.days_in_month
 for season in means_seas:
-    months = season_months[season]
     print(f"  Calculating seasonal {oper_name} for {season}")
 
-    if season == "DJF":
-        # DJF crosses year boundary
-        season_mean = ds[var].groupby('time.year').apply(
-            lambda x: x.sel(time=x['time.month'].isin(months)).reduce(oper,'time')
-        )
-    elif season == "year":
-        season_mean = ds[var].groupby('time.year').reduce(oper,'time')
-    elif season == "month_clim":
-        season_mean = ds[var].groupby('time.month').reduce(oper,'time')
-    else:
-        season_mean = ds[var].sel(time=ds['time.month'].isin(months)).groupby('time.year').reduce(oper,'time')
+    # Check if we should weight (Only if operation is 'mean')
+    do_weighting = (oper_name == "mean")
 
+    if season in ["DJF", "MAM", "JJA", "SON"]:
+        if do_weighting:
+            weighted_data = ds[var] * weights
+            sum_weighted = weighted_data.resample(time='QS-DEC').sum(dim='time')
+            sum_weights = weights.resample(time='QS-DEC').sum(dim='time')
+            seasonal_all = sum_weighted / sum_weights
+        else:
+            seasonal_all = ds[var].resample(time='QS-DEC').reduce(oper, 'time')
+
+        target_month = {"DJF": 12, "MAM": 3, "JJA": 6, "SON": 9}[season]
+        season_mean = seasonal_all.sel(time=seasonal_all['time.month'] == target_month)
+        
+        # Labeling shift
+        label_years = season_mean['time.year'] + (1 if season == "DJF" else 0)
+        season_mean = season_mean.assign_coords(time=label_years).rename({'time': 'year'})
+
+    elif season == "year":
+        if do_weighting:
+            season_mean = (ds[var] * weights).groupby('time.year').sum(dim='time') / weights.groupby('time.year').sum(dim='time')
+        else:
+            season_mean = ds[var].groupby('time.year').reduce(oper, 'time')
+
+    elif season == "month_clim":
+        # Climatology is usually kept unweighted to see the monthly average
+        season_mean = ds[var].groupby('time.month').reduce(oper, 'time')
+
+    else:
+        if season not in season_months:
+            print(f"ERROR: Custom season '{season}' not defined in season_months.")
+            continue # Skip to the next season instead of crashing
+
+        months = season_months[season]
+        # Custom month lists (Weighted)
+        ds_sub = ds[var].sel(time=ds['time.month'].isin(months))
+        if do_weighting:
+            w_sub = weights.sel(time=ds['time.month'].isin(months))
+            season_mean = (ds_sub * w_sub).groupby('time.year').sum(dim='time') / w_sub.groupby('time.year').sum(dim='time')
+        else:
+            season_mean = ds_sub.groupby('time.year').reduce(oper, 'time')
+
+    season_mean.name = var
     # Save output
     out_file = os.path.join(output_dir, f"{var}_{domain}_{gcm}_{scenario}_{realisation}_{institution}_{rcm2}_v1-r1_{season}_{oper_name}_{start_date}-{end_date}.nc")
     print(out_file)
-    season_mean.to_netcdf(out_file)
+    season_mean.to_netcdf(out_file, encoding={var:{'zlib':True, 'complevel':1, 'shuffle':True, 'dtype': 'float32'}})
     print(f"    Saved to {out_file}")
