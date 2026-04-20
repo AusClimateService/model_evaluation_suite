@@ -8,7 +8,7 @@ for index in $all_index_list; do
 	export index_list=$index
 	jobname=index.${index_list/:/_}
 	echo "Submit $jobname"
-	qsub -P ${compute_project} -q ${icclim_queue} -l walltime=${icclim_walltime} -l mem=${icclim_mem} -l ncpus=${icclim_ncpus} -l storage=${storage_project_list} -N $jobname  -o $logdir/icclim/icclim_${jobname}.out -e $logdir/icclim/icclim_${jobname}.err -V job_icclim.sh
+	qsub -P ${compute_project} -q ${icclim_queue} -l walltime=${icclim_walltime} -l mem=${icclim_mem} -l ncpus=${icclim_ncpus}  ${storage_project_list} -N $jobname  -o $logdir/icclim/icclim_${jobname}.out -e $logdir/icclim/icclim_${jobname}.err -V job_icclim.sh
 #	exit 0
 done
 
