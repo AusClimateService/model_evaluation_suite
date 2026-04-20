@@ -65,6 +65,7 @@ if not request:
     print("ERROR: environment variable 'var' not set")
     sys.exit(1)
 
+value = ""
 if len(request)==1:
    freq='mon'
    oper_name = 'mean'
@@ -76,6 +77,38 @@ elif len(request)==3:
     oper = getattr(np,oper_name)
     if oper_name != 'mean':
        oper_name = oper_name+"_"+freq
+
+elif len(request)==4:
+    var,freq,oper_name,value = request
+    assert oper_name in ['quantile','count']
+    if oper_name =='quantile':
+       q = float(value)
+       assert q >=0
+       assert q <=1
+       def oper(x, axis=None):
+          return np.quantile(x,q,axis=axis)
+       value = f"P{100*q}"
+       
+    else:
+       assert value[:2] in ['gt','ge','lt','le']
+       ineq = value[:2]
+       threshold = float(value[2:])
+       if ineq == 'gt':
+           def oper(x, axis=None):
+               return (x>threshold).sum(axis=axis)
+       elif ineq== 'ge':
+           def oper(x, axis=None):
+               return (x>=threshold).sum(axis=axis)
+       elif ineq == 'lt':
+           def oper(x, axis=None):
+               return (x<threshold).sum(axis=axis)
+       elif ineq == 'le':
+           def oper(x, axis=None):
+               return (x<=threshold).sum(axis=axis)
+    oper_name = oper_name+"_"+freq
+
+
+
 
 
 else:
@@ -183,6 +216,9 @@ for season in means_seas:
     # Check if we should weight (Only if operation is 'mean')
     do_weighting = (oper_name == "mean") * (freq == 'mon')
 
+    if 'quantile' == oper_name:
+       ds[var].load()
+
     if season in ["DJF", "MAM", "JJA", "SON"]:
         if do_weighting:
             weighted_data = ds[var] * weights
@@ -226,9 +262,9 @@ for season in means_seas:
     season_mean.name = var
     # Save output
     if obsdata:
-        out_file = os.path.join(output_dir, f"{var}_{data_name}_v1-r1_{season}_{oper_name}_{start_date}-{end_date}.nc")
+        out_file = os.path.join(output_dir, f"{var}_{data_name}_v1-r1_{season}_{oper_name}{value}_{start_date}-{end_date}.nc")
     else:
-        out_file = os.path.join(output_dir, f"{var}_{domain}_{gcm}_{scenario}_{realisation}_{institution}_{rcm2}_v1-r1_{season}_{oper_name}_{start_date}-{end_date}.nc")
+        out_file = os.path.join(output_dir, f"{var}_{domain}_{gcm}_{scenario}_{realisation}_{institution}_{rcm2}_v1-r1_{season}_{oper_name}{value}_{start_date}-{end_date}.nc")
     print(out_file)
     season_mean.to_netcdf(out_file, encoding={var:{'zlib':True, 'complevel':1, 'shuffle':True, 'dtype': 'float32'}})
     print(f"    Saved to {out_file}")
