@@ -59,23 +59,27 @@ except ValueError:
         assert 0,f'Regridder reference {args.regrid} '
 
 means_seas = os.environ.get("means_seas", "DJF MAM JJA SON year month_clim").split()
-var = os.environ.get("var")
+request = os.environ.get("var").split(':')
 
-if 'means_oper' in os.environ:
-    oper_name = os.environ['means_oper']
-    oper = getattr(np,oper_name)
-else:
-    oper = np.mean
-    oper_name ="mean"
-
-
-if 'means_freq' in os.environ:
-    freq = os.environ['means_freq']
-else:
-    freq ="mon"
-
-if not var:
+if not request:
     print("ERROR: environment variable 'var' not set")
+    sys.exit(1)
+
+if len(request)==1:
+   freq='mon'
+   oper_name = 'mean'
+   var = request[0]
+   oper = np.mean
+
+elif len(request)==3:
+    var,freq,oper_name = request
+    oper = getattr(np,oper_name)
+    if oper_name != 'mean':
+       oper_name = oper_name+"_"+freq
+
+
+else:
+    print("ERROR: could not parse environmental variable 'var'")
     sys.exit(1)
 
 # some keys are not relevant for observations data 
@@ -177,7 +181,7 @@ for season in means_seas:
     print(f"  Calculating seasonal {oper_name} for {season}")
 
     # Check if we should weight (Only if operation is 'mean')
-    do_weighting = (oper_name == "mean")
+    do_weighting = (oper_name == "mean") * (freq == 'mon')
 
     if season in ["DJF", "MAM", "JJA", "SON"]:
         if do_weighting:
