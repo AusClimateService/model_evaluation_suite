@@ -78,10 +78,15 @@ if not var:
     print("ERROR: environment variable 'var' not set")
     sys.exit(1)
 
+# some keys are not relevant for observations data 
+obsdata=os.environ.get('obsdata') in ['1','True','TRUE']
+if obsdata:
+    env_vars = ["data_path", "outdir", "data_name"]
+    data_path, outdir,data_name  = [os.environ[v] for v in env_vars]
+else:
+    env_vars = ["data_path", "outdir", "domain", "gcm", "scenario", "realisation", "institution", "rcm2"]
+    data_path, outdir, domain, gcm, scenario, realisation, institution, rcm2 = [os.environ[v] for v in env_vars]
 
-
-env_vars = ["data_path", "outdir", "domain", "gcm", "scenario", "realisation", "institution", "rcm2"]
-data_path, outdir, domain, gcm, scenario, realisation, institution, rcm2 = [os.environ[v] for v in env_vars]
 input_dir = data_path.format(freq=freq,var=var)
 #version_dirs = sorted(glob.glob(os.path.join(base_dir, "v*")))
 
@@ -216,7 +221,10 @@ for season in means_seas:
 
     season_mean.name = var
     # Save output
-    out_file = os.path.join(output_dir, f"{var}_{domain}_{gcm}_{scenario}_{realisation}_{institution}_{rcm2}_v1-r1_{season}_{oper_name}_{start_date}-{end_date}.nc")
+    if obsdata:
+        out_file = os.path.join(output_dir, f"{var}_{data_name}_v1-r1_{season}_{oper_name}_{start_date}-{end_date}.nc")
+    else:
+        out_file = os.path.join(output_dir, f"{var}_{domain}_{gcm}_{scenario}_{realisation}_{institution}_{rcm2}_v1-r1_{season}_{oper_name}_{start_date}-{end_date}.nc")
     print(out_file)
     season_mean.to_netcdf(out_file, encoding={var:{'zlib':True, 'complevel':1, 'shuffle':True, 'dtype': 'float32'}})
     print(f"    Saved to {out_file}")
