@@ -58,7 +58,7 @@ except ValueError:
     else:
         assert 0,f'Regridder reference {args.regrid} '
 
-means_seas = os.environ.get("means_seas", "DJF MAM JJA SON year month_clim").split()
+timestats_seas = os.environ.get("timestats_seas", "DJF MAM JJA SON year month_clim").split()
 request = os.environ.get("var").split(':')
 
 if not request:
@@ -134,7 +134,7 @@ input_dir = data_path.format(freq=freq,var=var)
 #    raise ValueError(f"Multiple version subdirectories found in {base_dir}: {version_dirs}")
 
 #input_dir = version_dirs[0]
-output_dir = os.path.join(outdir,oper_name,var)
+output_dir = os.path.join(outdir,'timestats',oper_name,var)
 os.makedirs(output_dir, exist_ok=True)
 
 start_date = os.environ.get("start_year")
@@ -210,7 +210,7 @@ if args.regrid and str(args.regrid).lower() != "false":
 # Loop over seasons and calculate mean
 # -----------------------------
 weights = ds.time.dt.days_in_month
-for season in means_seas:
+for season in timestats_seas:
     print(f"  Calculating seasonal {oper_name} for {season}")
 
     # Check if we should weight (Only if operation is 'mean')
@@ -258,7 +258,9 @@ for season in means_seas:
             season_mean = (ds_sub * w_sub).groupby('time.year').sum(dim='time') / w_sub.groupby('time.year').sum(dim='time')
         else:
             season_mean = ds_sub.groupby('time.year').reduce(oper, 'time')
-
+    print("computation complete")
+    season_mean.load()
+    print("data loaded")
     season_mean.name = var
     # Save output
     if obsdata:
