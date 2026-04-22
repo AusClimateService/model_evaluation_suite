@@ -12,7 +12,7 @@ Combined repository for automated, aggregated evaluation of ACS regional climate
 | TE_storms | Tempest Extremes updraft helicity tracker | 90% | BARRA, ACCESS-CE |  slow on a large domain. Needs [Tempest Extremes](https://github.com/ClimateGlobalChange/tempestextremes) | N/A |
 | icclim | Rainfall and temperature climate indices | Complete |  Gridded rainfall and temperature products | Needs icclim python library installed in conda environment | [icclim](https://icclim.readthedocs.io/en/stable/) | 
 | icclim_1hr | Attempt to apply icclim indices to hourly data | Some bugs | BARRA-C2. Ideally BRAIN | units are mm/day rather than mm/hr | [icclim](https://icclim.readthedocs.io/en/stable/) |
-| means | Compute seasonal, annual and climatological monthly means | Complete (model only) | BARRA, ERA5 (not implemented yet) | Used for sensitivity analysis, not obs comparison | N/A |
+| timestats | Compute seasonal, annual and climatological monthly means, maxes, mins, quantiles and threshold exceedance | Complete | BARRA, AGCD. ERA5 not implemented yet | Used for sensitivity analysis as well as obs comparison | N/A |
 | radar distributions | Subset to radar domain and compute histogram | Complete | Rainrates derived from radars | Radars regridded to model grid offline. NCI specific without some work | N/A |
 | stations | extract data at station locations | 90% | Station data | Needs input csv/netcdf with coords lat, lon and (if CSV) station | N/A |
 | wethours | extract dewpoint and rainfall at hours with rainfall above threshold | Complete | Station data |Intended for dewpoint/extreme rainfall comparison | N/A |
