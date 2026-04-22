@@ -58,30 +58,72 @@ except ValueError:
     else:
         assert 0,f'Regridder reference {args.regrid} '
 
-means_seas = os.environ.get("means_seas", "DJF MAM JJA SON year month_clim").split()
-var = os.environ.get("var")
+timestats_seas = os.environ.get("timestats_seas", "DJF MAM JJA SON year month_clim").split()
+request = os.environ.get("var").split(':')
 
-if 'means_oper' in os.environ:
-    oper_name = os.environ['means_oper']
-    oper = getattr(np,oper_name)
-else:
-    oper = np.mean
-    oper_name ="mean"
-
-
-if 'means_freq' in os.environ:
-    freq = os.environ['means_freq']
-else:
-    freq ="mon"
-
-if not var:
+if not request:
     print("ERROR: environment variable 'var' not set")
     sys.exit(1)
 
+value = ""
+if len(request)==1:
+   freq='mon'
+   oper_name = 'mean'
+   var = request[0]
+   oper = np.mean
+
+elif len(request)==3:
+    var,freq,oper_name = request
+    oper = getattr(np,oper_name)
+    if oper_name != 'mean':
+       oper_name = oper_name+"_"+freq
+
+elif len(request)==4:
+    var,freq,oper_name,value = request
+    assert oper_name in ['quantile','count']
+    if oper_name =='quantile':
+       q = float(value)
+       assert q >=0
+       assert q <=1
+       def oper(x, axis=None):
+          return np.quantile(x,q,axis=axis)
+       value = f"P{100*q}"
+       
+    else:
+       assert value[:2] in ['gt','ge','lt','le']
+       ineq = value[:2]
+       threshold = float(value[2:])
+       if ineq == 'gt':
+           def oper(x, axis=None):
+               return (x>threshold).sum(axis=axis)
+       elif ineq== 'ge':
+           def oper(x, axis=None):
+               return (x>=threshold).sum(axis=axis)
+       elif ineq == 'lt':
+           def oper(x, axis=None):
+               return (x<threshold).sum(axis=axis)
+       elif ineq == 'le':
+           def oper(x, axis=None):
+               return (x<=threshold).sum(axis=axis)
+    oper_name = oper_name+"_"+freq
 
 
-env_vars = ["data_path", "outdir", "domain", "gcm", "scenario", "realisation", "institution", "rcm2"]
-data_path, outdir, domain, gcm, scenario, realisation, institution, rcm2 = [os.environ[v] for v in env_vars]
+
+
+
+else:
+    print("ERROR: could not parse environmental variable 'var'")
+    sys.exit(1)
+
+# some keys are not relevant for observations data 
+obsdata=os.environ.get('obsdata') in ['1','True','TRUE']
+if obsdata:
+    env_vars = ["data_path", "outdir", "data_name"]
+    data_path, outdir,data_name  = [os.environ[v] for v in env_vars]
+else:
+    env_vars = ["data_path", "outdir", "domain", "gcm", "scenario", "realisation", "institution", "rcm2"]
+    data_path, outdir, domain, gcm, scenario, realisation, institution, rcm2 = [os.environ[v] for v in env_vars]
+
 input_dir = data_path.format(freq=freq,var=var)
 #version_dirs = sorted(glob.glob(os.path.join(base_dir, "v*")))
 
@@ -92,7 +134,7 @@ input_dir = data_path.format(freq=freq,var=var)
 #    raise ValueError(f"Multiple version subdirectories found in {base_dir}: {version_dirs}")
 
 #input_dir = version_dirs[0]
-output_dir = os.path.join(outdir,oper_name,var)
+output_dir = os.path.join(outdir,'timestats',oper_name,var)
 os.makedirs(output_dir, exist_ok=True)
 
 start_date = os.environ.get("start_year")
@@ -168,11 +210,14 @@ if args.regrid and str(args.regrid).lower() != "false":
 # Loop over seasons and calculate mean
 # -----------------------------
 weights = ds.time.dt.days_in_month
-for season in means_seas:
+for season in timestats_seas:
     print(f"  Calculating seasonal {oper_name} for {season}")
 
     # Check if we should weight (Only if operation is 'mean')
-    do_weighting = (oper_name == "mean")
+    do_weighting = (oper_name == "mean") * (freq == 'mon')
+
+    if 'quantile' == oper_name:
+       ds[var].load()
 
     if season in ["DJF", "MAM", "JJA", "SON"]:
         if do_weighting:
@@ -213,10 +258,15 @@ for season in means_seas:
             season_mean = (ds_sub * w_sub).groupby('time.year').sum(dim='time') / w_sub.groupby('time.year').sum(dim='time')
         else:
             season_mean = ds_sub.groupby('time.year').reduce(oper, 'time')
-
+    print("computation complete")
+    season_mean.load()
+    print("data loaded")
     season_mean.name = var
     # Save output
-    out_file = os.path.join(output_dir, f"{var}_{domain}_{gcm}_{scenario}_{realisation}_{institution}_{rcm2}_v1-r1_{season}_{oper_name}_{start_date}-{end_date}.nc")
+    if obsdata:
+        out_file = os.path.join(output_dir, f"{var}_{data_name}_v1-r1_{season}_{oper_name}{value}_{start_date}-{end_date}.nc")
+    else:
+        out_file = os.path.join(output_dir, f"{var}_{domain}_{gcm}_{scenario}_{realisation}_{institution}_{rcm2}_v1-r1_{season}_{oper_name}{value}_{start_date}-{end_date}.nc")
     print(out_file)
     season_mean.to_netcdf(out_file, encoding={var:{'zlib':True, 'complevel':1, 'shuffle':True, 'dtype': 'float32'}})
     print(f"    Saved to {out_file}")

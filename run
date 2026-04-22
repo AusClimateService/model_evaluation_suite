@@ -40,9 +40,9 @@ if [[ "$run_xclim" == "True" ]];
 fi
 
 
-if [[ "$run_means" == "True" ]];
+if [[ "$run_timestats" == "True" ]];
   then
-  sh app/means/job_launch.sh
+  sh app/timestats/job_launch.sh
 fi
 
 
