@@ -29,7 +29,7 @@ mkdir -p $outdir/wethours
             printf -v MONTH "%02d" $MON
             export MONTH=$MONTH
             echo $YEAR $MONTH
-            JID=`qsub -P ${compute_project} -q ${wethours_queue} -l walltime=${wethours_walltime} -l mem=${wethours_mem} -l ncpus=${wethours_ncpus} -l storage=${storage_project_list} -N wethours_${YEAR}${MONTH} -V  -o $logdir/wethours/wethours_${YEAR}${MONTH}.out -e $logdir/wethours/wethours_${YEAR}${MONTH}.err  run_wethours.sh`
+            JID=`qsub -P ${compute_project} -q ${wethours_queue} -l walltime=${wethours_walltime} -l mem=${wethours_mem} -l ncpus=${wethours_ncpus} -N wethours_${YEAR}${MONTH} -V  -o $logdir/wethours/wethours_${YEAR}${MONTH}.out -e $logdir/wethours/wethours_${YEAR}${MONTH}.err  run_wethours.sh`
             echo $JID
             JIDLIST=$JIDLIST:$JID
         done
