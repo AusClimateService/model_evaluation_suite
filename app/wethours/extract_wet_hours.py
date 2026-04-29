@@ -67,7 +67,7 @@ def extract_wet_hours(data_path,filename, month, year, outdir, calc_dp=False, th
     print(f"{files['pr']}")
     pr = xr.open_mfdataset(files['pr']).pr.sel(lon=slice(x0,x1),lat=slice(y0,y1))
     if landmask:
-       pr = pr.where(mask==100,drop=True).fillna(0)
+       pr = pr.where(mask==100).fillna(0)
     pr.load()
     print("Loaded precip")
     print(pr)
@@ -78,7 +78,7 @@ def extract_wet_hours(data_path,filename, month, year, outdir, calc_dp=False, th
         if len(files_lastmonth)>0:
             tas = tas.isel(time=slice(len(tas)-len(pr)-3,None,None)) # remove most (all but last 3 hours) of previous month
         if landmask:
-            tas = tas.where(mask==100,drop=True)
+            tas = tas.where(mask==100)
         print(tas.time[0])
         tas = tas.load()
         print(f"opening {len(files['hurs'])} files for rh")
@@ -88,7 +88,7 @@ def extract_wet_hours(data_path,filename, month, year, outdir, calc_dp=False, th
             rh = rh.isel(time=slice(len(rh)-len(pr)-3,None,None)) # remove most (all but last 3 hours) of previous month
         print(rh.time[0])
         if landmask:
-            rh = rh.where(mask==100,drop=True)
+            rh = rh.where(mask==100)
         rh = rh.load()
         print("Loaded tas and rh")
         tdps = dewpoint_from_relative_humidity(tas,rh/100)
@@ -100,7 +100,7 @@ def extract_wet_hours(data_path,filename, month, year, outdir, calc_dp=False, th
         if len(files_lastmonth)>0:
             tdps = tdps.isel(time=slice(len(tdps)-len(pr)-3,None,None)) # remove most (all but last 3 hours) of previous month
         if landmask:
-           tdps = tdps.where(mask==100,drop=True)
+           tdps = tdps.where(mask==100)
         tdps = tdps.load()
         print("Loaded tdps")
     # shift dewpoint forward one hour
@@ -121,15 +121,26 @@ def extract_wet_hours(data_path,filename, month, year, outdir, calc_dp=False, th
     ds = xr.Dataset({'pr':pr_trunc_xr, 'tdps':tdps_trunc_xr})
     # mask remaining values below precip threshold
     ds = ds.where(ds.pr>0.2)
+    encoding = {'pr':{'dtype':'int16',
+                  'scale_factor':0.1,
+                  'add_offset':0,
+                  'zlib':True,
+                  '_FillValue':-990,
+                  'chunksizes':(10,50,50)},   
+         'tdps':{'dtype':'int16',
+                 'scale_factor':0.1,
+                 'add_offset':0,
+                 'zlib':True,
+                 '_FillValue':-990,
+                 'chunksizes':(10,50,50)}}
     outname = filename.format(var='wethours',
                               freq='1hr', 
                               year1=year,
                               year2=year,
                               month1=f"{month:02d}",
                               month2=f"{month:02d}")
-    ds.to_netcdf(os.path.join(outdir,'wethours',outname).replace('*',''),
-               encoding = {'pr':{'dtype':'int16','scale_factor':0.1,'add_offset':0,'zlib':True,'_FillValue':-990},   
-                         'tdps':{'dtype':'int16','scale_factor':0.1,'add_offset':0,'zlib':True,'_FillValue':-990}})
+    ds.to_netcdf(os.path.join(outdir,'wethours',outname).replace("*",""),
+               encoding = encoding)
 
 if __name__=="__main__":
     year = int(os.environ['YEAR'])

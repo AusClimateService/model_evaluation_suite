@@ -1,6 +1,6 @@
 
-module use ${python_module_path}
-module load ${python_env}
+${python_env1}
+${python_env2}
 
 set -e
 

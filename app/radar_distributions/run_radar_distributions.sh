@@ -1,6 +1,7 @@
 #!/bin/bash
-module use ${python_module_path}
-module load ${python_env}
+
+${python_env1}
+${python_env2}
 
 which python
 cd $suitedir/app/radar_distributions

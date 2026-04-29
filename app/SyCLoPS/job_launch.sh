@@ -31,7 +31,7 @@ then
             printf -v MONTH "%02d" $MON
             export MONTH=$MONTH
             echo $YEAR $MONTH
-            JID=`qsub -P ${compute_project} -q ${syclops_queue} -l walltime=${syclops_walltime} -l mem=${syclops_mem} -l ncpus=${syclops_ncpus} -l storage=${storage_project_list} -N syclops_${YEAR}${MONTH} -V  -o $logdir/syclops/syclops_${YEAR}${MONTH}.out -e $logdir/syclops/syclops_${YEAR}${MONTH}.err  run_parallel.sh`
+            JID=`qsub -P ${compute_project} -q ${syclops_queue} -l walltime=${syclops_walltime} -l mem=${syclops_mem} -l ncpus=${syclops_ncpus}  ${storage_project_list} -N syclops_${YEAR}${MONTH} -V  -o $logdir/syclops/syclops_${YEAR}${MONTH}.out -e $logdir/syclops/syclops_${YEAR}${MONTH}.err  run_parallel.sh`
             echo $JID
             JIDLIST=$JIDLIST:$JID
         done
@@ -41,13 +41,13 @@ else
         do
         export YEAR=$YEAR
         export MONTH=
-        JID=`qsub -P ${compute_project} -q ${syclops_queue} -l walltime=${syclops_walltime} -l mem=${syclops_mem} -l ncpus=${syclops_ncpus} -l storage=${storage_project_list} -N syclops_${YEAR}${MONTH} -V  -o $logdir/syclops/syclops_${YEAR}${MONTH}.out -e $logdir/syclops/syclops_${YEAR}${MONTH}.err  run_parallel.sh`
+        JID=`qsub -P ${compute_project} -q ${syclops_queue} -l walltime=${syclops_walltime} -l mem=${syclops_mem} -l ncpus=${syclops_ncpus}  ${storage_project_list} -N syclops_${YEAR}${MONTH} -V  -o $logdir/syclops/syclops_${YEAR}${MONTH}.out -e $logdir/syclops/syclops_${YEAR}${MONTH}.err  run_parallel.sh`
         echo $JID
         JIDLIST=$JIDLIST:$JID
     done
 fi
 
 # when all months/years are run, gather together
-echo qsub -W depend=afterok$JIDLIST -P ${compute_project} -q ${syclops_queue} -l walltime=${syclops_walltime} -l mem=${syclops_mem} -l ncpus=${syclops_ncpus} -l storage=${storage_project_list} -N syclops_serial -V  -o $logdir/syclops/syclops_serial.out -e $logdir/syclops/syclops_serial.err  run_serial.sh
-qsub -W depend=afterok$JIDLIST -P ${compute_project} -q ${syclops_queue} -l walltime=${syclops_walltime} -l mem=${syclops_mem} -l ncpus=${syclops_ncpus} -l storage=${storage_project_list} -N syclops_serial -V  -o $logdir/syclops/syclops_serial.out -e $logdir/syclops/syclops_serial.err  run_serial.sh
+echo qsub -W depend=afterok$JIDLIST -P ${compute_project} -q ${syclops_queue} -l walltime=${syclops_walltime} -l mem=${syclops_mem} -l ncpus=${syclops_ncpus}  ${storage_project_list} -N syclops_serial -V  -o $logdir/syclops/syclops_serial.out -e $logdir/syclops/syclops_serial.err  run_serial.sh
+qsub -W depend=afterok$JIDLIST -P ${compute_project} -q ${syclops_queue} -l walltime=${syclops_walltime} -l mem=${syclops_mem} -l ncpus=${syclops_ncpus}  ${storage_project_list} -N syclops_serial -V  -o $logdir/syclops/syclops_serial.out -e $logdir/syclops/syclops_serial.err  run_serial.sh
 
