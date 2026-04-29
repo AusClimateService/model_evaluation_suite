@@ -13,8 +13,7 @@ set -e
 
 ls /g/data
 
-module use ${python_module_path}
-module load ${python_env}
+${python_env}
 module load cdo
 
 # link input files 
