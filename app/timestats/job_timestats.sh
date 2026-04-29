@@ -1,5 +1,6 @@
 #!/bin/bash
-${python_env}
+${python_env1}
+${python_env2}
 
 which python
 cd $suitedir/app/timestats

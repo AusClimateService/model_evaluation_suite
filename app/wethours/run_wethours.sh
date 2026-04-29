@@ -1,9 +1,7 @@
 #!/bin/bash
 set -e 
-echo module use ${python_module_path}
-module use ${python_module_path}
-echo module load ${python_env}
-module load ${python_env}
+${python_env1}
+${python_env2}
 
 which python
 

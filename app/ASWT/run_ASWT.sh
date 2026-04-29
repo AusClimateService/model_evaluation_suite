@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e 
 
-${python_env}
+${python_env1}
+${python_env2}
 
 which python
 

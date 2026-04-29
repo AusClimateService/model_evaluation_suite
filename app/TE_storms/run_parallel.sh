@@ -9,7 +9,8 @@
 #PBS -l storage=scratch/tp28+gdata/ia39+gdata/tp28+gdata/hh5+gdata/rq0+gdata/access+gdata/xp65+gdata/py18
 #PBS -v YEAR,MONTH
 
-${python_env}
+${python_env1}
+${python_env2}
 
 # link input files 
 workdir="$TE_storms_scratchpath/workdir_${YEAR}${MONTH}_${domain}_${gcm}_${scenario}_${realisation}_${institution}_${rcm2}/"
