@@ -56,3 +56,8 @@ if [[ "$run_radar_dist" == "True" ]];
   then
   sh app/radar_distributions/job_launch.sh
 fi
+
+if [[ "$run_wethours" == "True" ]];
+  then
+  sh app/wethours/job_launch.sh
+fi

@@ -127,7 +127,7 @@ def extract_wet_hours(data_path,filename, month, year, outdir, calc_dp=False, th
                               year2=year,
                               month1=f"{month:02d}",
                               month2=f"{month:02d}")
-    ds.to_netcdf(os.path.join(outdir,'wethours',outname),
+    ds.to_netcdf(os.path.join(outdir,'wethours',outname).replace('*',''),
                encoding = {'pr':{'dtype':'int16','scale_factor':0.1,'add_offset':0,'zlib':True,'_FillValue':-990},   
                          'tdps':{'dtype':'int16','scale_factor':0.1,'add_offset':0,'zlib':True,'_FillValue':-990}})
 
