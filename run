@@ -46,13 +46,19 @@ if [[ "$run_timestats" == "True" ]];
 fi
 
 
-if [[ "$run_spectra" == "True" ]];
+if [[ "$run_psd" == "True" ]];
   then
-  sh app/spectra/job_launch.sh
-  sh app/icclim_1hr/job_launch.sh
+  sh app/psd/job_launch.sh
 fi
+
 
 if [[ "$run_radar_dist" == "True" ]];
   then
   sh app/radar_distributions/job_launch.sh
+fi
+
+
+if [[ "$run_lag1_corr" == "True" ]];
+  then
+  sh app/lag1_corr/job_launch.sh
 fi
