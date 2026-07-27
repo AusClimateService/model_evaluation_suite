@@ -80,14 +80,13 @@ elif len(request)==3:
 
 elif len(request)==4:
     var,freq,oper_name,value = request
-    assert oper_name in ['quantile','count']
-    if oper_name =='quantile':
-       q = float(value)
-       assert q >=0
-       assert q <=1
-       def oper(x, axis=None):
-          return np.quantile(x,q,axis=axis)
-       value = f"P{100*q}"
+    assert oper_name == 'quantile'
+    q = float(value)
+    assert q >=0
+    assert q <=1
+    def oper(x, axis=None):
+      return np.quantile(x,q,axis=axis)
+    value = f"P{100*q}"
        
     else:
        assert value[:2] in ['gt','ge','lt','le']
