@@ -46,6 +46,13 @@ if [[ "$run_timestats" == "True" ]];
 fi
 
 
+if [[ "$run_thresholds" == "True" ]];
+  then
+  sh app/thresholds/job_launch.sh
+fi
+
+
+
 if [[ "$run_spectra" == "True" ]];
   then
   sh app/spectra/job_launch.sh
