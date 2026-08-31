@@ -60,12 +60,11 @@ if [[ "$run_spectra" == "True" ]];
   sh app/icclim_1hr/job_launch.sh
 fi
 
+
 if [[ "$run_radar_dist" == "True" ]];
   then
   sh app/radar_distributions/job_launch.sh
 fi
-<<<<<<< Updated upstream
-=======
 
 
 if [[ "$run_lag1_corr" == "True" ]];
@@ -78,4 +77,3 @@ if [[ "$run_rmse" == "True" ]];
   then
   sh app/rmse/job_launch.sh
 fi
->>>>>>> Stashed changes
