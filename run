@@ -11,10 +11,18 @@ if [[ "$run_MSE" == "True" ]];
   sh app/MSE/job_launch.sh
 fi
 
+
+if [[ "$run_ASWT" == "True" ]];
+  then
+  sh app/ASWT/job_launch.sh
+fi
+
+
 if [[ "$run_TEstorms" == "True" ]];
   then
   sh app/TE_storms/job_launch.sh
 fi
+
 
 if [[ "$run_syclops" == "True" ]];
   then
@@ -61,4 +69,10 @@ fi
 if [[ "$run_lag1_corr" == "True" ]];
   then
   sh app/lag1_corr/job_launch.sh
+fi
+
+
+if [[ "$run_rmse" == "True" ]];
+  then
+  sh app/rmse/job_launch.sh
 fi

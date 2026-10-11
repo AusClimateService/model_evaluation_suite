@@ -10,7 +10,7 @@ for vars in $all_var_list; do
 #	echo $var
 	jobname=stations.${var}
 	echo "Submit $jobname"
-	qsub -P ${compute_project} -q ${stations_queue} -l walltime=${stations_walltime} -l mem=${stations_mem} -l ncpus=${stations_ncpus} -l storage=${storage_project_list} -l jobfs=${stations_jobfs} -N $jobname  -o $logdir/stations/${jobname}.out -e $logdir/stations/${jobname}.err -V job_stations.sh
+	qsub -P ${compute_project} -q ${stations_queue} -l walltime=${stations_walltime} -l mem=${stations_mem} -l ncpus=${stations_ncpus} ${storage_project_list} -l jobfs=${stations_jobfs} -N $jobname  -o $logdir/stations/${jobname}.out -e $logdir/stations/${jobname}.err -V job_stations.sh
 #	exit 0
 done
 
