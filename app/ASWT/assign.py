@@ -103,8 +103,11 @@ def assign(u,v,clusterU,clusterV):
 
 def main(year,data_path,outdir):
     
-    u=xr.open_mfdataset(os.path.join(data_path.format(freq='day',var='ua850'),f"*_{year}*"),chunks={'lat':-1,'lon':-1,'time':1})
-    v=xr.open_mfdataset(os.path.join(data_path.format(freq='day',var='va850'),f"*_{year}*"),chunks={'lat':-1,'lon':-1,'time':1})
+    u=xr.open_mfdataset(os.path.join(data_path.format(freq='6hr',var='ua850'),f"*_{year}*"),chunks={'lat':-1,'lon':-1,'time':1})
+    v=xr.open_mfdataset(os.path.join(data_path.format(freq='6hr',var='va850'),f"*_{year}*"),chunks={'lat':-1,'lon':-1,'time':1})
+    
+    u = u.isel(time=(u.time.dt.hour == 12))
+    v = v.isel(time=(v.time.dt.hour == 12))
     SWT = {}
     crop_clusters=False
     if u.lon.values[0] > 100 or u.lon.values[-1] < 165 or u.lat.values[0] > -50 or u.lon.values[-1] < -5:
