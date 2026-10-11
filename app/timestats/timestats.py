@@ -7,6 +7,21 @@ import glob
 import xesmf as xe
 import argparse
 
+def round_coordinates(ds):
+    """Rounds lat and lon to eliminate tiny floating-point variations."""
+    if 'lon' in ds.coords:
+        ds.coords['lon'] = ds.coords['lon'].round(4)
+    if 'lat' in ds.coords:
+        ds.coords['lat'] = ds.coords['lat'].round(4)
+
+# Round boundary variables if they exist in the dataset
+    if 'lon_bnds' in ds.variables:
+        ds['lon_bnds'] = ds['lon_bnds'].round(4)
+    if 'lat_bnds' in ds.variables:
+        ds['lat_bnds'] = ds['lat_bnds'].round(4)
+
+    return ds
+
 def subset_time(ds, start_date=None, end_date=None):
     """Subset the time axis.
 
@@ -158,7 +173,7 @@ if not files:
     sys.exit(0)
 
 print(f"Processing variable: {var}")
-ds = xr.open_mfdataset(files, combine="by_coords", data_vars="minimal")
+ds = xr.open_mfdataset(files, combine="by_coords", data_vars="minimal", preprocess=round_coordinates, coords='minimal', compat="override")
 
 # Drop lat_bnds / lon_bnds if they exist
 for bnd_var in ["lat_bnds", "lon_bnds"]:

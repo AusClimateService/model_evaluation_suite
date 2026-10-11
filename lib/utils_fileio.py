@@ -12,6 +12,21 @@ import cmdline_provenance as cmdprov
 import utils_spatial
 
 
+def round_coordinates(ds):
+    """Rounds lat and lon to eliminate tiny floating-point variations."""
+    if 'lon' in ds.coords:
+        ds.coords['lon'] = ds.coords['lon'].round(4)
+    if 'lat' in ds.coords:
+        ds.coords['lat'] = ds.coords['lat'].round(4)
+
+# Round boundary variables if they exist in the dataset
+    if 'lon_bnds' in ds.variables:
+        ds['lon_bnds'] = ds['lon_bnds'].round(4)
+    if 'lat_bnds' in ds.variables:
+        ds['lat_bnds'] = ds['lat_bnds'].round(4)
+
+    return ds
+
 def get_new_log(infile_log=None):
     """Generate command log for output file."""
 
@@ -141,9 +156,29 @@ def read_data(
             ds = xr.open_dataset(infiles[0], mask_and_scale=True)
     else:
         try:
-            ds = xr.open_mfdataset(infiles, chunks='auto', mask_and_scale=True)
-        except NotImplementedError:
-            ds = xr.open_mfdataset(infiles, mask_and_scale=True)
+            # First try: standard chunked multi-file load
+            ds = xr.open_mfdataset(infiles, chunks='auto', mask_and_scale=True, preprocess=round_coordinates)
+        except (ValueError, NotImplementedError):
+            try:
+                # Fallback 1: Force alignment if lat/lon floating point mismatches occur
+                print("Coordinate alignment mismatch detected. Overriding spatial grids...")
+                ds = xr.open_mfdataset(
+                    infiles, 
+                    chunks='auto', 
+                    mask_and_scale=True, 
+                    combine='nested', 
+                    concat_dim='time', 
+                    join='override'
+                )
+            except NotImplementedError:
+                # Fallback 2: Handle systems where chunking isn't fully supported
+                ds = xr.open_mfdataset(
+                    infiles, 
+                    mask_and_scale=True, 
+                    combine='nested', 
+                    concat_dim='time', 
+                    join='override'
+                )
 
     if hshift:
         ds['time'] = ds['time'] - np.timedelta64(1, 'h')

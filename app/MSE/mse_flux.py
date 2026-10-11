@@ -4,6 +4,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob
 
+def round_coordinates(ds):
+    """Rounds lat and lon to eliminate tiny floating-point variations."""
+    if 'lon' in ds.coords:
+        ds.coords['lon'] = ds.coords['lon'].round(4)
+    if 'lat' in ds.coords:
+        ds.coords['lat'] = ds.coords['lat'].round(4)
+
+# Round boundary variables if they exist in the dataset
+    if 'lon_bnds' in ds.variables:
+        ds['lon_bnds'] = ds['lon_bnds'].round(4)
+    if 'lat_bnds' in ds.variables:
+        ds['lat_bnds'] = ds['lat_bnds'].round(4)
+
+    return ds
+
 def integrate(data,surface, surf_coord, coord='pressure',ascending=True):
     """
     Vertically integrate a data-array dealing correctly with masked values beneath the surface.
@@ -66,7 +81,7 @@ def mse(year, mon, exppath,file_freq,outdir,freq):
 #            if file_freq=='monthly':
 #                data[var].append(xr.open_mfdataset(os.path.join(exppath.format(freq=freq,var=var2),f"*_{year}{mon:02d}*"),chunks={})[var2])
 #            else:
-            data[var].append(xr.open_mfdataset(os.path.join(exppath.format(freq=freq,var=var2),f"*_{year}*"),chunks={})[var2])
+            data[var].append(xr.open_mfdataset(os.path.join(exppath.format(freq=freq,var=var2),f"*_{year}*"),chunks={},preprocess=round_coordinates)[var2])
             try:
                 data[var][-1] = data[var][-1].drop_vars('crs')
             except:
@@ -81,7 +96,7 @@ def mse(year, mon, exppath,file_freq,outdir,freq):
     for var in varlist:
             print(var)
             filepath = os.path.join(exppath.format(var=var,freq=freq),f"*_{year}*")
-            data[var]=xr.open_mfdataset(filepath,chunks={})[var]
+            data[var]=xr.open_mfdataset(filepath,chunks={},preprocess=round_coordinates)[var]
             data[var] = data[var].chunk({'time':1,'lat':510,'lon':650})
     data['orog'] = xr.open_mfdataset(os.path.join(exppath.format(var='orog',freq='fx'),"*.nc"))['orog']
     # normalise coords
